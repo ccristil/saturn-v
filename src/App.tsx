@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Center, Html } from '@react-three/drei'
 import { Stack } from './scene/Stack'
+import { Callout } from './scene/Callout'
 import { CameraRig, type CamPose } from './scene/CameraRig'
 import { hotspots, HOME_CAMERA } from './content/hotspots'
 
@@ -49,6 +50,15 @@ export default function App() {
       >
         <Center>
           <Stack isolateEngines={activeHotspot !== null} />
+          {hotspots.map((h, i) => (
+            <Callout
+              key={h.id}
+              target={h.target}
+              tag={h.tag}
+              active={i === activeIndex}
+              onSelect={() => setActiveIndex(i)}
+            />
+          ))}
         </Center>
       </Suspense>
 
