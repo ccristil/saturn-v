@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Center, Html } from '@react-three/drei'
 import { Stack } from './scene/Stack'
+import { CameraRig, type CamPose } from './scene/CameraRig'
 import { hotspots, HOME_CAMERA } from './content/hotspots'
 
 export default function App() {
@@ -26,6 +27,11 @@ export default function App() {
 
   const activeHotspot = activeIndex === null ? null : hotspots[activeIndex]
 
+  const pose: CamPose =
+    activeHotspot === null
+      ? HOME_CAMERA
+      : { position: activeHotspot.camera.position, lookAt: activeHotspot.camera.lookAt }
+
   return (
     <Canvas camera={{ position: HOME_CAMERA.position, fov: 40 }} dpr={[1, 2]}>
       <color attach="background" args={['#0b0e14']} />
@@ -47,6 +53,7 @@ export default function App() {
       </Suspense>
 
       <OrbitControls makeDefault enableDamping target={HOME_CAMERA.lookAt} />
+      <CameraRig pose={pose} />
     </Canvas>
   )
 }
