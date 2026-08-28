@@ -8,7 +8,7 @@ It is not a website. It is a presentation instrument. Every decision should be j
 
 - **Presented:** ~September 11, 2026. Hard deadline, no slip.
 - **Audience:** product engineers and PMs. Technical, but not aerospace people.
-- **Runtime:** localhost only. `npm run dev`, full screen browser, external display.
+- **Runtime:** localhost for the live talk — `npm run dev`, full screen browser, external display. Also **deployed to GitHub Pages** (`https://ccristil.github.io/saturn-v/`) for a shareable link. The model and all assets are self-hosted, so localhost still works wifi-off.
 - **Shape:** 5 hotspots on the vehicle. Presenter steps through them. Each opens a card with the engineering story.
 
 The 3D model is the vehicle for the content, not the point of the project. If time gets tight, the model gets simpler and the content stays.
@@ -32,7 +32,7 @@ Ask before adding any dependency. This project should stay small enough to reaso
 
 Explicitly out of scope. Do not build these, do not suggest them.
 
-- Deployment, hosting, CI, Docker
+- ~~Deployment, hosting, CI, Docker~~ → **deployment is now in scope:** a GitHub Actions workflow (`.github/workflows/deploy.yml`) builds and publishes to GitHub Pages on push to `main`. Still no Docker, no backend CI. Because of the Pages subpath, `vite.config.ts` sets `base: '/saturn-v/'` and **all asset paths must resolve through `import.meta.env.BASE_URL`** — never hardcode a leading-slash path.
 - Backend, database, API, auth
 - Mobile or responsive layouts — this runs on one laptop at one resolution
 - Tests beyond "it renders and doesn't throw"
@@ -196,13 +196,15 @@ Model source: `github.com/nasa/NASA-3D-Resources` → `3D Models/Saturn V/Saturn
 
 _Update this as you go — it's what a fresh session reads first._
 
-- [ ] Inspected the `.glb` scene graph. Stages separable? → **unknown**
-- [ ] Vertical slice running
-- [ ] Real model loaded and oriented
+- [x] Inspected the `.glb` scene graph. Stages separable? → **yes** — multi-mesh (`pCylinder1-5`, `pCone`, `pCube`, `group1-11`, `polySurface`…), ~104k render verts, upright along +Y (bbox Y ≈ 0 → 12.85). **Caveat:** mesh names are generic Maya names, *not* stage labels like `S-IC`/`F1_engines`, so `isolate` needs a name→stage mapping pass. Uses `KHR_materials_specular` + `EXT_texture_webp` (both fine in three.js GLTFLoader).
+- [x] Vertical slice running — Vite + React + TS + R3F scaffolded; model loads via `useGLTF`, auto-frames with `<Bounds>`/`<Center>`, `OrbitControls` for inspection. Build passes; serves at `/saturn-v/`.
+- [x] Real model loaded and oriented — renders from the real NASA `.glb` (visual confirmation on hardware still pending)
 - [ ] Camera positions captured for all 5 hotspots
-- [ ] Exploded stage view (only if meshes are separable)
+- [ ] Hotspot markers + leader lines + cards (the actual walkthrough)
+- [ ] GitHub Pages enabled in repo settings (Settings → Pages → Source: GitHub Actions) so the workflow can publish
+- [ ] Exploded stage view (only if meshes are separable) — they are
 - [ ] Content written
 - [ ] Dry run on presentation hardware
 - [ ] Fallback screen recording saved to desktop
 
-**Next up:** run `inspect` on the model, then scaffold the vertical slice.
+**Next up:** build the hotspot/callout/card loop on top of the rendered model (content-driven from `src/content/hotspots.ts`).
