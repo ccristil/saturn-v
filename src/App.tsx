@@ -1,13 +1,33 @@
-import { Suspense } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Bounds, Center, Html } from '@react-three/drei'
+import { OrbitControls, Center, Html } from '@react-three/drei'
 import { Stack } from './scene/Stack'
+import { hotspots, HOME_CAMERA } from './content/hotspots'
 
-// MVP: load the real NASA glb, auto-frame it, and let the presenter orbit it.
-// Hotspots / cards / camera rig come next — this proves the model renders.
 export default function App() {
+  // null = wide shot; otherwise index into hotspots
+  const [activeIndex, setActiveIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActiveIndex(null)
+      else if (e.key === 'ArrowRight')
+        setActiveIndex((i) => Math.min((i ?? -1) + 1, hotspots.length - 1))
+      else if (e.key === 'ArrowLeft')
+        setActiveIndex((i) => (i === null || i - 1 < 0 ? null : i - 1))
+      else if (e.key >= '1' && e.key <= '9') {
+        const n = parseInt(e.key, 10) - 1
+        if (n < hotspots.length) setActiveIndex(n)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const activeHotspot = activeIndex === null ? null : hotspots[activeIndex]
+
   return (
-    <Canvas camera={{ position: [18, 8, 18], fov: 40 }} dpr={[1, 2]}>
+    <Canvas camera={{ position: HOME_CAMERA.position, fov: 40 }} dpr={[1, 2]}>
       <color attach="background" args={['#0b0e14']} />
 
       <ambientLight intensity={0.6} />
@@ -21,14 +41,12 @@ export default function App() {
           </Html>
         }
       >
-        <Bounds fit clip observe margin={1.2}>
-          <Center>
-            <Stack />
-          </Center>
-        </Bounds>
+        <Center>
+          <Stack isolateEngines={activeHotspot !== null} />
+        </Center>
       </Suspense>
 
-      <OrbitControls makeDefault enableDamping />
+      <OrbitControls makeDefault enableDamping target={HOME_CAMERA.lookAt} />
     </Canvas>
   )
 }
