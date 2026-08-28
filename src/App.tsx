@@ -4,6 +4,8 @@ import { OrbitControls, Center, Html } from '@react-three/drei'
 import { Stack } from './scene/Stack'
 import { Callout } from './scene/Callout'
 import { CameraRig, type CamPose } from './scene/CameraRig'
+import { Card } from './ui/Card'
+import { Progress } from './ui/Progress'
 import { hotspots, HOME_CAMERA } from './content/hotspots'
 
 export default function App() {
@@ -34,36 +36,41 @@ export default function App() {
       : { position: activeHotspot.camera.position, lookAt: activeHotspot.camera.lookAt }
 
   return (
-    <Canvas camera={{ position: HOME_CAMERA.position, fov: 40 }} dpr={[1, 2]}>
-      <color attach="background" args={['#0b0e14']} />
+    <>
+      <Canvas camera={{ position: HOME_CAMERA.position, fov: 40 }} dpr={[1, 2]}>
+        <color attach="background" args={['#0b0e14']} />
 
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[12, 18, 10]} intensity={1.6} />
-      <directionalLight position={[-10, 6, -12]} intensity={0.5} />
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[12, 18, 10]} intensity={1.6} />
+        <directionalLight position={[-10, 6, -12]} intensity={0.5} />
 
-      <Suspense
-        fallback={
-          <Html center style={{ color: '#8494ab', font: '14px monospace' }}>
-            Loading model…
-          </Html>
-        }
-      >
-        <Center>
-          <Stack isolateEngines={activeHotspot !== null} />
-          {hotspots.map((h, i) => (
-            <Callout
-              key={h.id}
-              target={h.target}
-              tag={h.tag}
-              active={i === activeIndex}
-              onSelect={() => setActiveIndex(i)}
-            />
-          ))}
-        </Center>
-      </Suspense>
+        <Suspense
+          fallback={
+            <Html center style={{ color: '#8494ab', font: '14px monospace' }}>
+              Loading model…
+            </Html>
+          }
+        >
+          <Center>
+            <Stack isolateEngines={activeHotspot !== null} />
+            {hotspots.map((h, i) => (
+              <Callout
+                key={h.id}
+                target={h.target}
+                tag={h.tag}
+                active={i === activeIndex}
+                onSelect={() => setActiveIndex(i)}
+              />
+            ))}
+          </Center>
+        </Suspense>
 
-      <OrbitControls makeDefault enableDamping target={HOME_CAMERA.lookAt} />
-      <CameraRig pose={pose} />
-    </Canvas>
+        <OrbitControls makeDefault enableDamping target={HOME_CAMERA.lookAt} />
+        <CameraRig pose={pose} />
+      </Canvas>
+
+      <Card hotspot={activeHotspot} />
+      <Progress hotspots={hotspots} activeIndex={activeIndex} />
+    </>
   )
 }
