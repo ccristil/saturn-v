@@ -1,3 +1,38 @@
+/* Self-hosted fonts. Absolute /saturn-v/ path matches vite base in dev and prod. */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('/saturn-v/fonts/ibm-plex-sans-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('/saturn-v/fonts/ibm-plex-sans-600.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/saturn-v/fonts/ibm-plex-mono-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  src: url('/saturn-v/fonts/barlow-condensed-600.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+
+:root {
+  --void: #0b0e14;
+  --panel: #141924;
+  --rule: #2a3444;
+  --ink: #e8edf5;
+  --muted: #8494ab;
+  --foil: #d4a24c;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -11,8 +46,10 @@ body,
 }
 
 body {
-  background: #0b0e14;
+  background: var(--void);
   overflow: hidden;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  color: var(--ink);
 }
 
 #root {
@@ -23,4 +60,113 @@ body {
 canvas {
   display: block;
   touch-action: none;
+}
+
+/* --- Callout tag (numbered marker at the end of the leader line) --- */
+.callout-tag {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  padding: 4px 8px;
+  color: var(--void);
+  background: var(--foil);
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  user-select: none;
+}
+.callout-tag--inactive {
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--rule);
+}
+
+/* --- Card (DOM overlay, right side) --- */
+.card {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 520px;
+  max-width: 42vw;
+  padding: 48px 44px;
+  background: var(--panel);
+  border-left: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transform: translateX(100%);
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  overflow-y: auto;
+}
+.card--open {
+  transform: translateX(0);
+}
+.card__tag {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: 0.1em;
+  color: var(--foil);
+}
+.card__title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 40px;
+  line-height: 1.05;
+  color: var(--ink);
+}
+.card__subtitle {
+  font-size: 20px;
+  color: var(--foil);
+  margin-bottom: 8px;
+}
+.card__body {
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.card__specs {
+  margin-top: 12px;
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.card__spec {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+}
+.card__spec dt {
+  color: var(--muted);
+}
+.card__spec dd {
+  color: var(--ink);
+}
+
+/* --- Progress strip (bottom center) --- */
+.progress {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+}
+.progress__tag {
+  color: var(--muted);
+  opacity: 0.6;
+}
+.progress__tag.is-active {
+  color: var(--foil);
+  opacity: 1;
 }
