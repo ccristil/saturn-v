@@ -261,7 +261,7 @@ canvas {
   padding: 0 12vw;
   cursor: pointer;
   /* keyed on slide index → re-runs on every slide change (smooth fade between slides) */
-  animation: slide-fade 300ms ease;
+  animation: slide-fade 550ms ease;
 }
 @keyframes slide-fade {
   from {
