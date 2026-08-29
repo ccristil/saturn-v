@@ -6,7 +6,9 @@ import { Callouts } from './scene/Callouts'
 import { CameraRig, type CamPose } from './scene/CameraRig'
 import { Card } from './ui/Card'
 import { Progress } from './ui/Progress'
+import { Presentation } from './ui/Presentation'
 import { hotspots, HOME_CAMERA, EXPLODE_CAMERA, MODEL_CREDIT } from './content/hotspots'
+import { slides } from './content/slides'
 
 // TEMP (Task 8): press 'p' to log the current camera pose for hotspots.ts. Removed after tuning.
 function PoseLogger() {
@@ -33,14 +35,44 @@ export default function App() {
   // null = wide shot; otherwise index into hotspots
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [exploded, setExploded] = useState(false)
+  // null = not presenting; otherwise index into slides (deck covers the 3D)
+  const [slideIndex, setSlideIndex] = useState<number | null>(null)
 
   const toggleExplode = () => {
     setExploded((v) => !v)
     setActiveIndex(null) // explode and hotspots are mutually exclusive
   }
 
+  const startPresentation = () => {
+    setExploded(false)
+    setActiveIndex(null)
+    setSlideIndex(0)
+  }
+  const exitPresentation = () => setSlideIndex(null)
+  const prevSlide = () => {
+    if (slideIndex !== null && slideIndex > 0) setSlideIndex(slideIndex - 1)
+  }
+  const nextSlide = () => {
+    if (slideIndex === null) return
+    if (slideIndex < slides.length - 1) setSlideIndex(slideIndex + 1)
+    else {
+      // past the last slide → hand off into the 3D walkthrough at hotspot 1
+      setSlideIndex(null)
+      setActiveIndex(0)
+    }
+  }
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Presentation deck owns the keyboard while it's up.
+      if (slideIndex !== null) {
+        if (e.key === 'Escape') exitPresentation()
+        else if (e.key === 'ArrowRight' || e.key === ' ') {
+          e.preventDefault()
+          nextSlide()
+        } else if (e.key === 'ArrowLeft') prevSlide()
+        return
+      }
       if (e.key === 'Escape') {
         setExploded(false)
         setActiveIndex(null)
@@ -63,7 +95,8 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [exploded])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exploded, slideIndex])
 
   const activeHotspot = activeIndex === null ? null : hotspots[activeIndex]
 
@@ -90,7 +123,9 @@ export default function App() {
           }
         >
           <Stack isolateStages={activeHotspot?.isolate} exploded={exploded} />
-          {!exploded && <Callouts activeIndex={activeIndex} onSelect={setActiveIndex} />}
+          {!exploded && slideIndex === null && (
+            <Callouts activeIndex={activeIndex} onSelect={setActiveIndex} />
+          )}
         </Suspense>
 
         <OrbitControls makeDefault enableDamping target={HOME_CAMERA.lookAt} />
@@ -100,13 +135,32 @@ export default function App() {
 
       <Card hotspot={activeHotspot} />
       <Progress hotspots={hotspots} activeIndex={activeIndex} />
-      <button
-        className={exploded ? 'explode-btn is-active' : 'explode-btn'}
-        onClick={toggleExplode}
-      >
-        {exploded ? 'Reassemble' : 'Explode stages'}
-      </button>
+
+      {slideIndex === null && (
+        <>
+          <button className="hud-btn present-btn" onClick={startPresentation}>
+            Start Presentation
+          </button>
+          <button
+            className={exploded ? 'hud-btn explode-btn is-active' : 'hud-btn explode-btn'}
+            onClick={toggleExplode}
+          >
+            {exploded ? 'Reassemble' : 'Explode stages'}
+          </button>
+        </>
+      )}
+
       <div className="credit">{MODEL_CREDIT}</div>
+
+      {slideIndex !== null && (
+        <Presentation
+          slides={slides}
+          index={slideIndex}
+          onNext={nextSlide}
+          onPrev={prevSlide}
+          onExit={exitPresentation}
+        />
+      )}
     </>
   )
 }
