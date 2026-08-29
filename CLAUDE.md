@@ -196,15 +196,16 @@ Model source: `github.com/nasa/NASA-3D-Resources` → `3D Models/Saturn V/Saturn
 
 _Update this as you go — it's what a fresh session reads first._
 
-- [x] Inspected the `.glb` scene graph. Stages separable? → **yes** — multi-mesh (`pCylinder1-5`, `pCone`, `pCube`, `group1-11`, `polySurface`…), ~104k render verts, upright along +Y (bbox Y ≈ 0 → 12.85). **Caveat:** mesh names are generic Maya names, *not* stage labels like `S-IC`/`F1_engines`, so `isolate` needs a name→stage mapping pass. Uses `KHR_materials_specular` + `EXT_texture_webp` (both fine in three.js GLTFLoader).
+- [x] Inspected the `.glb` scene graph (22 meshes, 13 materials, upright +Y, bbox Y ≈ 0 → 12.85). **Stages are NOT separable.** The entire rocket body (all three stages' outer skin) is ONE fused mesh, `pCylinder1` (Y 0.28 → 12.85, all 9 paint-band materials). What *is* separate: the **5 F-1 engine bells** (`polySurfa1–5`, at the base), the **4 fins** (`fin_*` materials), and ~8 thin conduit/tunnel/top-detail meshes. The body is an exterior **shell only** — there is **no interior geometry** (no tanks, no internal engines, no LM). Names are generic Maya names, so `isolate` selects **spatially** (bottom-fraction of the model), not by name. Uses `KHR_materials_specular` + `EXT_texture_webp` (both fine in three.js GLTFLoader). Implications: engine/fin "detach" explode is possible; stage-separation explode needs the body sliced in Blender first; "go inside" needs authored internals (none exist).
 - [x] Vertical slice running — Vite + React + TS + R3F scaffolded; model loads via `useGLTF`, auto-frames with `<Bounds>`/`<Center>`, `OrbitControls` for inspection. Build passes; serves at `/saturn-v/`.
 - [x] Real model loaded and oriented — renders from the real NASA `.glb` (visual confirmation on hardware still pending)
-- [ ] Camera positions captured for all 5 hotspots
-- [ ] Hotspot markers + leader lines + cards (the actual walkthrough)
-- [ ] GitHub Pages enabled in repo settings (Settings → Pages → Source: GitHub Actions) so the workflow can publish
-- [ ] Exploded stage view (only if meshes are separable) — they are
-- [ ] Content written
+- [~] Camera positions captured — hotspot 1 (F-1 engines) has rough estimates in `hotspots.ts`; still need live tuning + hotspots 2–5
+- [x] Hotspot markers + leader lines + cards — the full dive-in loop (arc-in camera, spatial isolate/dim, foil leader-line draw-in, DOM card, progress strip) works end-to-end for hotspot 1. Keyboard: →/←/Esc/1–5. Deployed to Pages.
+- [x] GitHub Pages enabled — live at https://ccristil.github.io/saturn-v/, auto-deploys on push to `main`
+- [ ] Exploded stage view — **stages are fused (see above); needs Blender slice first.** Engine/fin detach explode is doable on the current mesh. (User is holding on this for now.)
+- [ ] Content written (placeholder copy in hotspot 1)
 - [ ] Dry run on presentation hardware
 - [ ] Fallback screen recording saved to desktop
+- [ ] Remove the temp `PoseLogger` from `App.tsx` after camera tuning is done
 
-**Next up:** build the hotspot/callout/card loop on top of the rendered model (content-driven from `src/content/hotspots.ts`).
+**Next up:** live-tune hotspot 1's camera/target coordinates (press `p` to capture), then replicate the loop to hotspots 2–5.
