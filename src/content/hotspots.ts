@@ -30,8 +30,8 @@ export const HOME_CAMERA = {
 // Wide framing for the exploded stack (it grows ~70 units taller when apart).
 // Estimate — tuned live.
 export const EXPLODE_CAMERA = {
-  position: [70, 30, 175] as [number, number, number],
-  lookAt: [0, 25, 0] as [number, number, number],
+  position: [90, 58, 235] as [number, number, number],
+  lookAt: [0, 33, 0] as [number, number, number],
 }
 
 export const hotspots: Hotspot[] = [

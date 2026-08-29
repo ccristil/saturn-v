@@ -7,26 +7,29 @@ import { computeStageMoves, type StageMove } from './explode'
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/saturn-v.glb`
 
-// The three connector rings ship ~20 units off-axis in -Z, and each sits ~1 unit
-// high, leaving a seam above the stage below it. For each: pull its center back to
-// world z = 0 AND lower it by its measured gap so the stack reads as one flush body.
-// Idempotent (guarded flag).
-const RING_FIX = [
-  { name: 'Interstage', dy: -1.0 },
-  { name: 'S-II_Top', dy: -1.0 },
-  { name: 'Instrument_Unit', dy: -0.9 },
+// Assemble the stack into one flush body:
+//  - fixZ: the three connector rings ship ~20 units off-axis in -Z → pull to z = 0.
+//  - dy: cumulative downward nudge (world units) to close the visible inter-stage
+//    gaps; upper stages carry the shift of everything below them. Tuned visually.
+// Idempotent (guarded flag). S-IC (base) is the fixed reference, so it's omitted.
+const ASSEMBLE: { name: string; dy: number; fixZ: boolean }[] = [
+  { name: 'Interstage', dy: -1.0, fixZ: true },
+  { name: 'S-II', dy: -3.0, fixZ: false },
+  { name: 'S-II_Top', dy: -4.0, fixZ: true },
+  { name: 'S-IVB', dy: -7.0, fixZ: false },
+  { name: 'Instrument_Unit', dy: -7.9, fixZ: true },
 ]
 
 function fixDisplacedParts(root: Object3D) {
   if (root.userData.__displacementFixed) return
   root.updateMatrixWorld(true)
   root.traverse((node) => {
-    const cfg = RING_FIX.find((f) => f.name === node.name)
+    const cfg = ASSEMBLE.find((f) => f.name === node.name)
     if (!cfg) return
     const box = new Box3().setFromObject(node)
     if (box.isEmpty()) return
     const c = box.getCenter(new Vector3()) // current world center
-    const desiredWorld = new Vector3(c.x, c.y + cfg.dy, 0) // z→0, lower to close the seam
+    const desiredWorld = new Vector3(c.x, c.y + cfg.dy, cfg.fixZ ? 0 : c.z)
     const parent = node.parent
     if (!parent) {
       node.position.add(desiredWorld.clone().sub(c))
