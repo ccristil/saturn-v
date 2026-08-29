@@ -150,6 +150,19 @@ canvas {
   color: var(--ink);
 }
 
+/* --- Model attribution (CC BY, bottom-left) --- */
+.credit {
+  position: fixed;
+  bottom: 12px;
+  left: 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
 /* --- Progress strip (bottom center) --- */
 .progress {
   position: fixed;

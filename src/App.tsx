@@ -6,7 +6,7 @@ import { Callout } from './scene/Callout'
 import { CameraRig, type CamPose } from './scene/CameraRig'
 import { Card } from './ui/Card'
 import { Progress } from './ui/Progress'
-import { hotspots, HOME_CAMERA } from './content/hotspots'
+import { hotspots, HOME_CAMERA, MODEL_CREDIT } from './content/hotspots'
 
 // TEMP (Task 8): press 'p' to log the current camera pose for hotspots.ts. Removed after tuning.
 function PoseLogger() {
@@ -73,7 +73,7 @@ export default function App() {
           }
         >
           <Center>
-            <Stack isolateEngines={activeHotspot !== null} />
+            <Stack isolateStages={activeHotspot?.isolate} />
             {hotspots.map((h, i) => (
               <Callout
                 key={h.id}
@@ -93,6 +93,7 @@ export default function App() {
 
       <Card hotspot={activeHotspot} />
       <Progress hotspots={hotspots} activeIndex={activeIndex} />
+      <div className="credit">{MODEL_CREDIT}</div>
     </>
   )
 }

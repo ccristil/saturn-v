@@ -12,12 +12,17 @@ export type Hotspot = {
   body: string[] // paragraphs
   specs?: { label: string; value: string }[]
   image?: { src: string; alt: string; credit: string }
-  isolate?: string[] // mesh names to keep lit (future; spatial for now)
+  isolate?: string[] // stage node names to keep lit; everything else dims
 }
 
-// Wide "home" shot the presenter returns to (Esc / left-arrow past the first hotspot).
+// Model credit — CC BY requires attribution.
+export const MODEL_CREDIT = '“Apollo Saturn V Launch Vehicle” by devPilot · CC BY'
+
+// devPilot model is ~91 units tall, engines at the base (Y ~0–6). After <Center>
+// the stack spans Y ≈ -45.5 → +45.5, so the F-1 engines sit near Y ≈ -42.
+// These are estimates — tuned live (press 'p' to capture).
 export const HOME_CAMERA = {
-  position: [12, 3, 24] as [number, number, number],
+  position: [50, 8, 130] as [number, number, number],
   lookAt: [0, 0, 0] as [number, number, number],
 }
 
@@ -28,10 +33,10 @@ export const hotspots: Hotspot[] = [
     tag: '01',
     title: 'The engine that ate itself',
     subtitle: 'Placeholder hook — five F-1 engines, one very hard problem.',
-    target: [0, -6, 1],
+    target: [0, -42, 6],
     camera: {
-      position: [3.5, -4.5, 6],
-      lookAt: [0, -6, 0],
+      position: [14, -34, 34],
+      lookAt: [0, -42, 0],
     },
     body: [
       'PLACEHOLDER. This is mock copy so the card has something to show. The presenter replaces every paragraph here with the real F-1 combustion-instability story.',
@@ -43,6 +48,8 @@ export const hotspots: Hotspot[] = [
       { label: 'Engines', value: '5 × F-1' },
       { label: 'Propellant flow', value: '~3 t/s' },
     ],
-    isolate: ['S-IC', 'F1_engines'],
+    // Stage node names in the model: keep the whole first stage (incl. its F-1
+    // engines) lit, dim the rest. Others: S-II, S-IVB, Interstage, Instrument_Unit.
+    isolate: ['S-IC'],
   },
 ]

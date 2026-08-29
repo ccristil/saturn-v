@@ -16,8 +16,8 @@ type Props = {
 
 export function Callout({ target, tag, active, onSelect }: Props) {
   const t = new Vector3(target[0], target[1], target[2])
-  const elbow = new Vector3(t.x + 4, t.y, t.z + 3) // 90° elbow out from the vehicle
-  const tagEnd = new Vector3(elbow.x, elbow.y + 2, elbow.z)
+  const elbow = new Vector3(t.x + 16, t.y, t.z + 12) // 90° elbow out from the vehicle
+  const tagEnd = new Vector3(elbow.x, elbow.y + 8, elbow.z)
 
   const prog = useRef(active ? 1 : 0)
   const [, force] = useState(0)

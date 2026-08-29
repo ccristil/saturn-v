@@ -1,8 +1,9 @@
-import { Box3, Vector3, Object3D, Mesh, Material, MeshStandardMaterial, Color } from 'three'
+import { Object3D, Mesh, Material, MeshStandardMaterial, Color } from 'three'
 
-// TODO: replace spatial selection with a real mesh-name → stage map so
-// Hotspot.isolate can drive this by name (also needed for exploded-stage view).
-const KEEP_BOTTOM_FRACTION = 0.18
+// The devPilot model groups meshes under named stage nodes: S-IC, S-II, S-IVB,
+// Interstage, S-II_Top, Instrument_Unit (with engines nested inside their stage).
+// isolate keeps the named stages' subtrees lit and dims everything else.
+
 const DIM = 0.18 // how far dimmed meshes drop toward black
 
 function dimMaterial(src: Material): Material {
@@ -12,7 +13,6 @@ function dimMaterial(src: Material): Material {
     clone.emissive = new Color(0x000000)
     clone.metalness = Math.min(clone.metalness, 0.2)
   } else {
-    // Generic fallback for any non-standard material.
     const anyMat = clone as unknown as { color?: Color }
     if (anyMat.color) anyMat.color = anyMat.color.clone().multiplyScalar(DIM)
   }
@@ -20,26 +20,25 @@ function dimMaterial(src: Material): Material {
   return clone
 }
 
-export function applyEngineIsolate(root: Object3D): void {
-  const box = new Box3().setFromObject(root)
-  const thresholdY = box.min.y + (box.max.y - box.min.y) * KEEP_BOTTOM_FRACTION
+export function applyStageIsolate(root: Object3D, keepStages: string[]): void {
+  const keep = new Set(keepStages)
 
-  root.traverse((o) => {
-    const mesh = o as Mesh
-    if (!mesh.isMesh) return
-    const centerY = new Box3().setFromObject(mesh).getCenter(new Vector3()).y
-    if (centerY <= thresholdY) return // keep engines/base lit
-
-    if (mesh.userData.__origMat === undefined) {
+  const walk = (node: Object3D, kept: boolean) => {
+    const nowKept = kept || keep.has(node.name)
+    const mesh = node as Mesh
+    if (mesh.isMesh && !nowKept && mesh.userData.__origMat === undefined) {
       mesh.userData.__origMat = mesh.material
       mesh.material = Array.isArray(mesh.material)
         ? mesh.material.map((m) => dimMaterial(m))
         : dimMaterial(mesh.material)
     }
-  })
+    for (const child of node.children) walk(child, nowKept)
+  }
+
+  walk(root, false)
 }
 
-export function clearEngineIsolate(root: Object3D): void {
+export function clearStageIsolate(root: Object3D): void {
   root.traverse((o) => {
     const mesh = o as Mesh
     if (mesh.isMesh && mesh.userData.__origMat !== undefined) {
