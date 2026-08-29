@@ -37,6 +37,7 @@ export default function App() {
   const [exploded, setExploded] = useState(false)
   // null = not presenting; otherwise index into slides (deck covers the 3D)
   const [slideIndex, setSlideIndex] = useState<number | null>(null)
+  const [deckExiting, setDeckExiting] = useState(false) // dissolve deck → 3D handoff
 
   const toggleExplode = () => {
     setExploded((v) => !v)
@@ -48,17 +49,26 @@ export default function App() {
     setActiveIndex(null)
     setSlideIndex(0)
   }
-  const exitPresentation = () => setSlideIndex(null)
+  const exitPresentation = () => {
+    setDeckExiting(false)
+    setSlideIndex(null)
+  }
   const prevSlide = () => {
+    if (deckExiting) return
     if (slideIndex !== null && slideIndex > 0) setSlideIndex(slideIndex - 1)
   }
   const nextSlide = () => {
-    if (slideIndex === null) return
+    if (slideIndex === null || deckExiting) return
     if (slideIndex < slides.length - 1) setSlideIndex(slideIndex + 1)
     else {
-      // past the last slide → hand off into the 3D walkthrough at hotspot 1
-      setSlideIndex(null)
+      // Past the last slide → hand off into the 3D. Start the camera dive behind
+      // the deck, then dissolve the deck over it (see .deck--exiting, ~820ms).
       setActiveIndex(0)
+      setDeckExiting(true)
+      window.setTimeout(() => {
+        setSlideIndex(null)
+        setDeckExiting(false)
+      }, 820)
     }
   }
 
@@ -96,7 +106,7 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exploded, slideIndex])
+  }, [exploded, slideIndex, deckExiting])
 
   const activeHotspot = activeIndex === null ? null : hotspots[activeIndex]
 
@@ -156,6 +166,7 @@ export default function App() {
         <Presentation
           slides={slides}
           index={slideIndex}
+          exiting={deckExiting}
           onNext={nextSlide}
           onPrev={prevSlide}
           onExit={exitPresentation}

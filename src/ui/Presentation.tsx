@@ -5,12 +5,14 @@ import type { Slide } from '../content/slides'
 export function Presentation({
   slides,
   index,
+  exiting = false,
   onNext,
   onPrev,
   onExit,
 }: {
   slides: Slide[]
   index: number
+  exiting?: boolean
   onNext: () => void
   onPrev: () => void
   onExit: () => void
@@ -19,7 +21,7 @@ export function Presentation({
   const atStart = index === 0
 
   return (
-    <div className="deck">
+    <div className={exiting ? 'deck deck--exiting' : 'deck'}>
       <button className="deck__exit" onClick={onExit} aria-label="Exit presentation">
         ✕
       </button>
