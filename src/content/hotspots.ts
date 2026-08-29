@@ -19,19 +19,20 @@ export type Hotspot = {
 // Model credit — CC BY requires attribution.
 export const MODEL_CREDIT = '“Apollo Saturn V Launch Vehicle” by devPilot · CC BY'
 
-// devPilot model is ~91 units tall, engines at the base (Y ~0–6). After <Center>
-// the stack spans Y ≈ -45.5 → +45.5, so the F-1 engines sit near Y ≈ -42.
-// These are estimates — tuned live (press 'p' to capture).
+// Model renders in its own space (no <Center>): engines at the base (Y ~0–6),
+// top (instrument unit) at ~Y 83, so the assembled center is ~Y 40. Orbit + all
+// cameras target that center. Tuned live via headless screenshots.
+export const ORBIT_TARGET = [0, 40, 0] as [number, number, number]
+
 export const HOME_CAMERA = {
-  position: [50, 8, 130] as [number, number, number],
-  lookAt: [0, 0, 0] as [number, number, number],
+  position: [44, 40, 138] as [number, number, number],
+  lookAt: ORBIT_TARGET,
 }
 
 // Wide framing for the exploded stack (it grows ~70 units taller when apart).
-// Estimate — tuned live.
 export const EXPLODE_CAMERA = {
-  position: [90, 58, 235] as [number, number, number],
-  lookAt: [0, 33, 0] as [number, number, number],
+  position: [92, 78, 250] as [number, number, number],
+  lookAt: [0, 70, 0] as [number, number, number],
 }
 
 export const hotspots: Hotspot[] = [
@@ -41,11 +42,11 @@ export const hotspots: Hotspot[] = [
     tag: '01',
     title: 'The engine that ate itself',
     subtitle: 'Placeholder hook — five F-1 engines, one very hard problem.',
-    target: [0, -42, 6],
+    target: [0, 3, 6],
     anchor: 'F1', // the 5 F-1 engine nodes (F1, F1.001–004) — leader line hits their real center
     camera: {
-      position: [14, -34, 34],
-      lookAt: [0, -42, 0],
+      position: [13, 10, 32],
+      lookAt: [0, 3, 0],
     },
     body: [
       'PLACEHOLDER. This is mock copy so the card has something to show. The presenter replaces every paragraph here with the real F-1 combustion-instability story.',

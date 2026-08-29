@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls, Center, Html } from '@react-three/drei'
+import { OrbitControls, Html } from '@react-three/drei'
 import { Stack } from './scene/Stack'
 import { Callouts } from './scene/Callouts'
 import { CameraRig, type CamPose } from './scene/CameraRig'
@@ -89,10 +89,8 @@ export default function App() {
             </Html>
           }
         >
-          <Center>
-            <Stack isolateStages={activeHotspot?.isolate} exploded={exploded} />
-            {!exploded && <Callouts activeIndex={activeIndex} onSelect={setActiveIndex} />}
-          </Center>
+          <Stack isolateStages={activeHotspot?.isolate} exploded={exploded} />
+          {!exploded && <Callouts activeIndex={activeIndex} onSelect={setActiveIndex} />}
         </Suspense>
 
         <OrbitControls makeDefault enableDamping target={HOME_CAMERA.lookAt} />
