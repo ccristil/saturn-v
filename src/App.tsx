@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useState } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Center, Html } from '@react-three/drei'
 import { Stack } from './scene/Stack'
 import { Callout } from './scene/Callout'
@@ -7,6 +7,27 @@ import { CameraRig, type CamPose } from './scene/CameraRig'
 import { Card } from './ui/Card'
 import { Progress } from './ui/Progress'
 import { hotspots, HOME_CAMERA } from './content/hotspots'
+
+// TEMP (Task 8): press 'p' to log the current camera pose for hotspots.ts. Removed after tuning.
+function PoseLogger() {
+  const { camera, controls } = useThree()
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'p') return
+      const c = controls as unknown as { target?: { x: number; y: number; z: number } }
+      // eslint-disable-next-line no-console
+      console.log(
+        'position:',
+        [+camera.position.x.toFixed(2), +camera.position.y.toFixed(2), +camera.position.z.toFixed(2)],
+        'lookAt:',
+        c.target ? [+c.target.x.toFixed(2), +c.target.y.toFixed(2), +c.target.z.toFixed(2)] : null,
+      )
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [camera, controls])
+  return null
+}
 
 export default function App() {
   // null = wide shot; otherwise index into hotspots
@@ -67,6 +88,7 @@ export default function App() {
 
         <OrbitControls makeDefault enableDamping target={HOME_CAMERA.lookAt} />
         <CameraRig pose={pose} />
+        <PoseLogger />
       </Canvas>
 
       <Card hotspot={activeHotspot} />
