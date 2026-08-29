@@ -26,6 +26,13 @@ export const HOME_CAMERA = {
   lookAt: [0, 0, 0] as [number, number, number],
 }
 
+// Wide framing for the exploded stack (it grows ~70 units taller when apart).
+// Estimate — tuned live.
+export const EXPLODE_CAMERA = {
+  position: [70, 30, 175] as [number, number, number],
+  lookAt: [0, 25, 0] as [number, number, number],
+}
+
 export const hotspots: Hotspot[] = [
   {
     id: 'f1-engines',

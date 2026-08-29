@@ -6,7 +6,7 @@ import { Callout } from './scene/Callout'
 import { CameraRig, type CamPose } from './scene/CameraRig'
 import { Card } from './ui/Card'
 import { Progress } from './ui/Progress'
-import { hotspots, HOME_CAMERA, MODEL_CREDIT } from './content/hotspots'
+import { hotspots, HOME_CAMERA, EXPLODE_CAMERA, MODEL_CREDIT } from './content/hotspots'
 
 // TEMP (Task 8): press 'p' to log the current camera pose for hotspots.ts. Removed after tuning.
 function PoseLogger() {
@@ -32,11 +32,27 @@ function PoseLogger() {
 export default function App() {
   // null = wide shot; otherwise index into hotspots
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
+  const [exploded, setExploded] = useState(false)
+
+  const toggleExplode = () => {
+    setExploded((v) => !v)
+    setActiveIndex(null) // explode and hotspots are mutually exclusive
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setActiveIndex(null)
-      else if (e.key === 'ArrowRight')
+      if (e.key === 'Escape') {
+        setExploded(false)
+        setActiveIndex(null)
+        return
+      }
+      if (e.key === 'x' || e.key === 'X') {
+        setExploded((v) => !v)
+        setActiveIndex(null)
+        return
+      }
+      if (exploded) return // stage nav is disabled while exploded
+      if (e.key === 'ArrowRight')
         setActiveIndex((i) => Math.min((i ?? -1) + 1, hotspots.length - 1))
       else if (e.key === 'ArrowLeft')
         setActiveIndex((i) => (i === null || i - 1 < 0 ? null : i - 1))
@@ -47,12 +63,13 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [exploded])
 
   const activeHotspot = activeIndex === null ? null : hotspots[activeIndex]
 
-  const pose: CamPose =
-    activeHotspot === null
+  const pose: CamPose = exploded
+    ? EXPLODE_CAMERA
+    : activeHotspot === null
       ? HOME_CAMERA
       : { position: activeHotspot.camera.position, lookAt: activeHotspot.camera.lookAt }
 
@@ -73,16 +90,17 @@ export default function App() {
           }
         >
           <Center>
-            <Stack isolateStages={activeHotspot?.isolate} />
-            {hotspots.map((h, i) => (
-              <Callout
-                key={h.id}
-                target={h.target}
-                tag={h.tag}
-                active={i === activeIndex}
-                onSelect={() => setActiveIndex(i)}
-              />
-            ))}
+            <Stack isolateStages={activeHotspot?.isolate} exploded={exploded} />
+            {!exploded &&
+              hotspots.map((h, i) => (
+                <Callout
+                  key={h.id}
+                  target={h.target}
+                  tag={h.tag}
+                  active={i === activeIndex}
+                  onSelect={() => setActiveIndex(i)}
+                />
+              ))}
           </Center>
         </Suspense>
 
@@ -93,6 +111,12 @@ export default function App() {
 
       <Card hotspot={activeHotspot} />
       <Progress hotspots={hotspots} activeIndex={activeIndex} />
+      <button
+        className={exploded ? 'explode-btn is-active' : 'explode-btn'}
+        onClick={toggleExplode}
+      >
+        {exploded ? 'Reassemble' : 'Explode stages'}
+      </button>
       <div className="credit">{MODEL_CREDIT}</div>
     </>
   )

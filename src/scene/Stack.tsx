@@ -1,7 +1,9 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import { Box3, Vector3, Matrix4, Object3D } from 'three'
 import { applyStageIsolate, clearStageIsolate } from './isolate'
+import { computeStageMoves, type StageMove } from './explode'
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/saturn-v.glb`
 
@@ -32,17 +34,44 @@ function fixDisplacedParts(root: Object3D) {
   root.userData.__displacementFixed = true
 }
 
-export function Stack({ isolateStages }: { isolateStages?: string[] }) {
+const EXPLODE_S = 1.2 // seconds for the full separate/reassemble
+function smootherstep(t: number) {
+  return t * t * t * (t * (t * 6 - 15) + 10)
+}
+
+export function Stack({
+  isolateStages,
+  exploded = false,
+}: {
+  isolateStages?: string[]
+  exploded?: boolean
+}) {
   const { scene } = useGLTF(MODEL_URL)
+  const moves = useRef<StageMove[]>([])
+  const prog = useRef(0)
 
   // Run once, synchronously, before <Center> measures the bounds.
-  useMemo(() => fixDisplacedParts(scene), [scene])
+  useMemo(() => {
+    fixDisplacedParts(scene)
+    moves.current = computeStageMoves(scene)
+  }, [scene])
 
   useEffect(() => {
     if (isolateStages && isolateStages.length) applyStageIsolate(scene, isolateStages)
     else clearStageIsolate(scene)
     return () => clearStageIsolate(scene)
   }, [isolateStages, scene])
+
+  useFrame((_, delta) => {
+    const goal = exploded ? 1 : 0
+    if (prog.current === goal) return
+    const dir = goal > prog.current ? 1 : -1
+    prog.current = Math.max(0, Math.min(1, prog.current + (dir * delta) / EXPLODE_S))
+    const e = smootherstep(prog.current)
+    for (const m of moves.current) {
+      m.node.position.copy(m.base).addScaledVector(m.offset, e)
+    }
+  })
 
   return <primitive object={scene} />
 }
