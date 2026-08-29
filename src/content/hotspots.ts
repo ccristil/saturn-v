@@ -4,7 +4,8 @@ export type Hotspot = {
   tag: string // "01" — shown in the callout marker
   title: string
   subtitle: string // one-line hook
-  target: [number, number, number] // point on the model the leader line hits
+  target: [number, number, number] // fallback point the leader line hits
+  anchor?: string // model node name to anchor the leader line to (overrides target at runtime)
   camera: {
     position: [number, number, number]
     lookAt: [number, number, number]
@@ -41,6 +42,7 @@ export const hotspots: Hotspot[] = [
     title: 'The engine that ate itself',
     subtitle: 'Placeholder hook — five F-1 engines, one very hard problem.',
     target: [0, -42, 6],
+    anchor: 'F1', // the 5 F-1 engine nodes (F1, F1.001–004) — leader line hits their real center
     camera: {
       position: [14, -34, 34],
       lookAt: [0, -42, 0],

@@ -2,7 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Center, Html } from '@react-three/drei'
 import { Stack } from './scene/Stack'
-import { Callout } from './scene/Callout'
+import { Callouts } from './scene/Callouts'
 import { CameraRig, type CamPose } from './scene/CameraRig'
 import { Card } from './ui/Card'
 import { Progress } from './ui/Progress'
@@ -91,16 +91,7 @@ export default function App() {
         >
           <Center>
             <Stack isolateStages={activeHotspot?.isolate} exploded={exploded} />
-            {!exploded &&
-              hotspots.map((h, i) => (
-                <Callout
-                  key={h.id}
-                  target={h.target}
-                  tag={h.tag}
-                  active={i === activeIndex}
-                  onSelect={() => setActiveIndex(i)}
-                />
-              ))}
+            {!exploded && <Callouts activeIndex={activeIndex} onSelect={setActiveIndex} />}
           </Center>
         </Suspense>
 
