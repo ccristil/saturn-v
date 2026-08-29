@@ -7,26 +7,34 @@ import { computeStageMoves, type StageMove } from './explode'
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/saturn-v.glb`
 
-// These three parts ship ~20 units off-axis in -Z in the source file. Pull each
-// back so its center sits on the stack (world z = 0). Idempotent (guarded flag).
-const DISPLACED = ['Interstage', 'S-II_Top', 'Instrument_Unit']
+// The three connector rings ship ~20 units off-axis in -Z, and each sits ~1 unit
+// high, leaving a seam above the stage below it. For each: pull its center back to
+// world z = 0 AND lower it by its measured gap so the stack reads as one flush body.
+// Idempotent (guarded flag).
+const RING_FIX = [
+  { name: 'Interstage', dy: -1.0 },
+  { name: 'S-II_Top', dy: -1.0 },
+  { name: 'Instrument_Unit', dy: -0.9 },
+]
 
 function fixDisplacedParts(root: Object3D) {
   if (root.userData.__displacementFixed) return
   root.updateMatrixWorld(true)
   root.traverse((node) => {
-    if (!DISPLACED.includes(node.name)) return
+    const cfg = RING_FIX.find((f) => f.name === node.name)
+    if (!cfg) return
     const box = new Box3().setFromObject(node)
     if (box.isEmpty()) return
     const c = box.getCenter(new Vector3()) // current world center
+    const desiredWorld = new Vector3(c.x, c.y + cfg.dy, 0) // z→0, lower to close the seam
     const parent = node.parent
     if (!parent) {
-      node.position.add(new Vector3(0, 0, -c.z))
+      node.position.add(desiredWorld.clone().sub(c))
     } else {
       parent.updateMatrixWorld(true)
       const inv = new Matrix4().copy(parent.matrixWorld).invert()
       const cur = c.clone().applyMatrix4(inv)
-      const desired = new Vector3(c.x, c.y, 0).applyMatrix4(inv)
+      const desired = desiredWorld.applyMatrix4(inv)
       node.position.add(desired.sub(cur))
     }
     node.updateMatrixWorld(true)
