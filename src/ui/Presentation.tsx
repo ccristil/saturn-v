@@ -26,7 +26,11 @@ export function Presentation({
         ✕
       </button>
 
-      <div className={`deck__slide deck__slide--${slide.kind ?? 'content'}`} onClick={onNext}>
+      <div
+        key={index}
+        className={`deck__slide deck__slide--${slide.kind ?? 'content'}`}
+        onClick={onNext}
+      >
         {slide.eyebrow && <div className="deck__eyebrow">{slide.eyebrow}</div>}
         <h1 className="deck__title">{slide.title}</h1>
         {slide.subtitle && <p className="deck__subtitle">{slide.subtitle}</p>}
