@@ -21,7 +21,7 @@ Pinned. Do not swap these out.
 
 - **Vite** + **React** + **TypeScript**
 - **three.js** via **@react-three/fiber**
-- **@react-three/drei** — `OrbitControls`, `Html`, `useGLTF`, `Bounds`, `Line`
+- **@react-three/drei** — `OrbitControls`, `Html`, `useGLTF`, `Line`. (No `Bounds`/`Center` — framing is explicit; see **Model & coordinate system** below.)
 - Plain CSS modules or a single stylesheet. No Tailwind, no component library.
 
 Ask before adding any dependency. This project should stay small enough to reason about in one sitting.
@@ -65,7 +65,8 @@ export type Hotspot = {
   tag: string;                   // "01" — shown in the callout marker
   title: string;
   subtitle: string;              // one-line hook, read aloud-able
-  target: [number, number, number];        // point on the model the leader line hits
+  target: [number, number, number];        // fallback point the leader line hits
+  anchor?: string;               // model node name to anchor the leader line to (overrides target at runtime)
   camera: {
     position: [number, number, number];
     lookAt: [number, number, number];
@@ -73,32 +74,32 @@ export type Hotspot = {
   body: string[];                // paragraphs, ~500-600 words total
   specs?: { label: string; value: string }[];
   image?: { src: string; alt: string; credit: string };
-  isolate?: string[];            // mesh names to keep lit; everything else dims
+  isolate?: string[];            // stage node names to keep lit; everything else dims
 };
 ```
 
-Example:
+Example (real coords are in the model's own space — see **Model & coordinate system**):
 
 ```ts
 {
-  id: "f1-instability",
+  id: "f1-engines",
   order: 1,
   tag: "01",
   title: "The engine that ate itself",
-  subtitle: "Four years to stop five engines from tearing themselves apart.",
-  target: [0, -18.2, 1.4],
-  camera: { position: [8, -16, 12], lookAt: [0, -18, 0] },
-  body: [
-    "...",
-  ],
+  subtitle: "Five F-1 engines, one very hard problem.",
+  target: [0, 3, 6],             // fallback; `anchor` supersedes it
+  anchor: "F1",                  // leader line hits the real F-1 engine cluster (F1, F1.001–004)
+  camera: { position: [13, 10, 32], lookAt: [0, 3, 0] },
+  body: [ "..." ],
   specs: [
     { label: "Thrust, each", value: "1.5M lbf" },
     { label: "Propellant flow", value: "~3 t/s" },
   ],
-  image: { src: "/img/f1-injector.jpg", alt: "F-1 injector plate", credit: "NASA" },
-  isolate: ["S-IC", "F1_engines"],
+  isolate: ["S-IC"],             // keep the whole first stage (incl. its engines) lit
 }
 ```
+
+**`anchor` is the reliable way to place a leader line** — it finds the named node(s) in the live model and points at their true center, so it can't drift the way a hand-typed `target` can. Match by exact name or `<anchor>.NNN` (e.g. `"F1"` catches `F1`, `F1.001`…). `target` is only the fallback if the node isn't found.
 
 ---
 
@@ -106,20 +107,45 @@ Example:
 
 ```
 public/
-  models/saturn-v.glb          # NASA, public domain
+  models/saturn-v.glb          # devPilot "Apollo Saturn V", CC BY (see Model & coordinate system)
   img/                         # NASA photos, self-hosted
-  fonts/                       # self-hosted woff2
+  fonts/                       # self-hosted woff2 (Plex Sans/Mono, Barlow Condensed)
 src/
-  content/hotspots.ts          # ALL copy lives here
+  content/hotspots.ts          # ALL copy + camera poses + HOME/EXPLODE/ORBIT_TARGET + MODEL_CREDIT
   scene/
-    Stack.tsx                  # loads the glb (or builds primitives)
-    Callout.tsx                # marker + leader line
-    CameraRig.tsx              # animates between hotspot camera positions
+    Stack.tsx                  # loads the glb; assembles it (fix displaced parts, close gaps); drives explode + isolate
+    isolate.ts                 # dim all meshes except the named stage(s) (per-mesh cloned materials)
+    explode.ts                 # precompute each stage's upward move; Stack animates it
+    Callout.tsx                # one billboarded leader line + numbered tag (always faces camera)
+    Callouts.tsx               # resolves each hotspot's `anchor` to a real node position; renders Callouts
+    CameraRig.tsx              # eased arc between camera poses (home / hotspot / explode)
   ui/
-    Card.tsx                   # the popup panel
+    Card.tsx                   # the popup panel (DOM overlay)
     Progress.tsx               # 01 · 02 · 03 · 04 · 05 indicator
-  App.tsx                      # owns activeIndex, keyboard handling
+  App.tsx                      # owns activeIndex + exploded; keyboard; explode button; credit
 ```
+
+---
+
+## Model & coordinate system
+
+**The model.** `public/models/saturn-v.glb` is *"Apollo Saturn V Launch Vehicle"* by **devPilot** (Sketchfab), **CC BY** — so attribution is required (shown bottom-left via `MODEL_CREDIT`; keep it). ~8.8 MB, ~106k triangles. It replaced the original fused NASA model because its stages are separate, properly-named nodes:
+
+- **Stage groups:** `S-IC`, `Interstage`, `S-II`, `S-II_Top`, `S-IVB`, `Instrument_Unit` (bottom → top).
+- **Engines** (nested under their stage): `F1`, `F1.001–004` (5× F-1 under S-IC); `J2`, `J2.001–004` (5× J-2 under S-II); `J2.005` (1× J-2 under S-IVB).
+- **No interior geometry** — exterior shells + engines only (no tanks/LM). "Go inside" = the explode revealing engine clusters, not a cutaway.
+
+**Assembly (in `Stack.tsx`, runs once on load).** The raw file has quirks that `fixDisplacedParts` corrects: three connector rings (`Interstage`, `S-II_Top`, `Instrument_Unit`) ship ~20 units off-axis in −Z → pulled to z=0; and the upper stages sit with small gaps → nudged down (cumulative) so the stack reads as one flush body. Tuned constants live in the `ASSEMBLE` table.
+
+**No `<Center>`.** Auto-centering was removed (its bbox measurement got corrupted by the callout). The model renders in its **own coordinate space**: engines at the base ~**Y 0–6**, top ~**Y 83**, assembled center ~**Y 40**. Everything is authored against that:
+
+- `ORBIT_TARGET = [0, 40, 0]` — OrbitControls target + home `lookAt`.
+- `HOME_CAMERA`, `EXPLODE_CAMERA`, and each hotspot `camera` are all in this space, in `hotspots.ts`.
+- **Adding a hotspot:** give it an `anchor` (a node name above), a `camera` pose looking at that region, and an `isolate` stage. Capture the pose live: the temp `PoseLogger` in `App.tsx` logs `position`/`lookAt` to the console on **`p`** — paste those in. (Then remove `PoseLogger` before ship.)
+
+**Explode.** Toggle with **`X`** or the on-screen button. `explode.ts` moves each stage group up (cumulative), revealing the engine clusters in the gaps; `CameraRig` pulls back to `EXPLODE_CAMERA`. Reassembles on repeat. Mutually exclusive with hotspots.
+
+**Callouts billboard.** Each callout copies the camera orientation every frame, so the leader line + tag always read straight-on regardless of how the rocket is rotated (no twisting to see a label).
 
 ---
 
@@ -129,7 +155,7 @@ Non-negotiable. These are what separate a demo from a presentation.
 
 1. **Keyboard navigation is the primary interface.** `←` / `→` step through hotspots in `order`. `Esc` closes the card and returns to the wide shot. `1`–`5` jump directly. Clicking a marker is a secondary convenience for answering audience questions. Never ship a change that breaks arrow-key nav.
 2. **Never trap focus or require a precise click.** No small hit targets, no drag-to-open, no hover-only affordances.
-3. **Camera transitions are ~800ms and always land in the same place for a given hotspot.** Deterministic. The presenter has rehearsed this.
+3. **Camera transitions are eased (~1s; explode ~1.2s) and always land in the same place for a given hotspot.** Deterministic — fixed duration, snaps to the exact pose. The presenter has rehearsed this.
 4. **Legible from 20 feet.** Body text no smaller than 18px. Card max-width ~520px. High contrast. Assume a washed-out projector — never rely on subtle value differences.
 5. **60fps on integrated graphics.** If the frame rate drops, reduce poly count or lighting complexity, not the interaction.
 6. **Fails visibly, not silently.** If the model 404s, render the primitive fallback stack and log it. The talk must survive a missing asset.
@@ -174,11 +200,14 @@ One accent, one motion idea, one structural device. The numbered tags earn their
 ## Commands
 
 ```bash
-npm run dev              # localhost:5173
+npm run dev              # localhost:5173/saturn-v/
+npm run build            # tsc + vite build (this is the "does it still work" check)
 npx @gltf-transform/cli inspect public/models/saturn-v.glb
 ```
 
-Model source: `github.com/nasa/NASA-3D-Resources` → `3D Models/Saturn V/Saturn V.glb`. Public domain, ~905 KB, roughly 35k polys.
+**Model source:** *Apollo Saturn V Launch Vehicle* by **devPilot** on Sketchfab, **CC BY** (attribution required). ~8.8 MB, ~106k tris. (Replaced the original NASA `.glb`, which was one fused mesh — see git history.)
+
+**Seeing the render.** There's no display in the agent sandbox, so visual checks use headless Chromium via Playwright, installed **outside the repo** at `~/.claude/pw/` (`node ~/.claude/pw/shot.cjs <url> <out.png> [waitMs] [clickSel] [clip] [dragXY]`, viewport via `PW_VIEWPORT=1512x900`). Screenshot localhost, then read the PNG. This is how framing/gaps/labels get tuned — measure and look, don't guess.
 
 ---
 
@@ -187,8 +216,8 @@ Model source: `github.com/nasa/NASA-3D-Resources` → `3D Models/Saturn V/Saturn
 - **Vertical slice first.** Placeholder geometry, one hotspot, one card, camera flies to it. Prove the loop end to end before touching the real model or writing real copy.
 - **Small diffs.** One concern per change. This is being built in evenings around a day job.
 - Don't refactor for elegance. It ships in two weeks and then it's over.
-- Don't write copy. The presenter writes the content; you build the machine that displays it.
-- If the `.glb` turns out to be one fused mesh, say so and switch to primitives rather than trying to split it. Cylinders and cones for the stages will look cleaner on a projector anyway.
+- Don't write copy. The presenter writes the content; you build the machine that displays it. (Hotspot 1 has clearly-marked PLACEHOLDER copy so the card renders — not real content.)
+- The model question is settled: we use the devPilot model with separable, named stages (see **Model & coordinate system**). The old "if it's one fused mesh, switch to primitives" concern no longer applies.
 
 ---
 
@@ -196,16 +225,15 @@ Model source: `github.com/nasa/NASA-3D-Resources` → `3D Models/Saturn V/Saturn
 
 _Update this as you go — it's what a fresh session reads first._
 
-- [x] Inspected the `.glb` scene graph (22 meshes, 13 materials, upright +Y, bbox Y ≈ 0 → 12.85). **Stages are NOT separable.** The entire rocket body (all three stages' outer skin) is ONE fused mesh, `pCylinder1` (Y 0.28 → 12.85, all 9 paint-band materials). What *is* separate: the **5 F-1 engine bells** (`polySurfa1–5`, at the base), the **4 fins** (`fin_*` materials), and ~8 thin conduit/tunnel/top-detail meshes. The body is an exterior **shell only** — there is **no interior geometry** (no tanks, no internal engines, no LM). Names are generic Maya names, so `isolate` selects **spatially** (bottom-fraction of the model), not by name. Uses `KHR_materials_specular` + `EXT_texture_webp` (both fine in three.js GLTFLoader). Implications: engine/fin "detach" explode is possible; stage-separation explode needs the body sliced in Blender first; "go inside" needs authored internals (none exist).
-- [x] Vertical slice running — Vite + React + TS + R3F scaffolded; model loads via `useGLTF`, auto-frames with `<Bounds>`/`<Center>`, `OrbitControls` for inspection. Build passes; serves at `/saturn-v/`.
-- [x] Real model loaded and oriented — renders from the real NASA `.glb` (visual confirmation on hardware still pending)
-- [~] Camera positions captured — hotspot 1 (F-1 engines) has rough estimates in `hotspots.ts`; still need live tuning + hotspots 2–5
-- [x] Hotspot markers + leader lines + cards — the full dive-in loop (arc-in camera, spatial isolate/dim, foil leader-line draw-in, DOM card, progress strip) works end-to-end for hotspot 1. Keyboard: →/←/Esc/1–5. Deployed to Pages.
-- [x] GitHub Pages enabled — live at https://ccristil.github.io/saturn-v/, auto-deploys on push to `main`
-- [ ] Exploded stage view — **stages are fused (see above); needs Blender slice first.** Engine/fin detach explode is doable on the current mesh. (User is holding on this for now.)
-- [ ] Content written (placeholder copy in hotspot 1)
-- [ ] Dry run on presentation hardware
-- [ ] Fallback screen recording saved to desktop
-- [ ] Remove the temp `PoseLogger` from `App.tsx` after camera tuning is done
+- [x] Scaffold + deploy — Vite + React + TS + R3F; self-hosted model/fonts; base `/saturn-v/`; GitHub Actions → **Pages live** at https://ccristil.github.io/saturn-v/ (auto-deploys on push to `main`).
+- [x] Model chosen & wired — swapped to the devPilot CC-BY model (named separable stages + engines; see **Model & coordinate system**). Assembled (displaced parts recentered, inter-stage gaps closed), rendered in real coords (no `<Center>`).
+- [x] Hotspot 1 (F-1 engines) dive-in — full loop end-to-end: arc-in `CameraRig`, isolate-by-stage-name dim, `anchor`-resolved + camera-billboarded leader line, DOM card, progress strip. Keyboard →/←/Esc/1–5; marker click; touch via tag.
+- [x] Camera framing tuned (via Playwright) — home (centered whole rocket), hotspot 1 dive-in, and explode all frame correctly at landscape aspect.
+- [x] **Stage explode** — toggle (`X` / button) separates the six stages to reveal the engine clusters; camera pulls back; reassembles. (This is an added feature beyond the original 5-hotspot brief, at the user's request.)
+- [ ] **Hotspots 2–5** — not built. Add entries to `hotspots.ts` (anchor + camera pose + isolate stage); capture poses with `PoseLogger` (`p`).
+- [ ] Real copy — hotspot 1 is PLACEHOLDER; presenter writes the actual stories.
+- [ ] Remove the temp `PoseLogger` from `App.tsx` before ship.
+- [ ] Optional polish — in the dive-in the `01` tag overlaps the card slightly (hide-when-open or extend-left); optional stage labels on the exploded view.
+- [ ] Dry run on presentation hardware; fallback screen recording saved to desktop.
 
-**Next up:** live-tune hotspot 1's camera/target coordinates (press `p` to capture), then replicate the loop to hotspots 2–5.
+**Next up:** build hotspots 2–5 (replicate the hotspot-1 pattern), then swap in real copy. Use `PoseLogger` (`p`) + Playwright screenshots to place/verify each.
