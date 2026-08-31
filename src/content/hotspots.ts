@@ -19,20 +19,22 @@ export type Hotspot = {
 // Model credit — CC BY requires attribution.
 export const MODEL_CREDIT = '“Apollo Saturn V Launch Vehicle” by devPilot · CC BY'
 
-// Model renders in its own space (no <Center>): engines at the base (Y ~0–6),
-// top (instrument unit) at ~Y 83, so the assembled center is ~Y 40. Orbit + all
-// cameras target that center. Tuned live via headless screenshots.
-export const ORBIT_TARGET = [0, 40, 0] as [number, number, number]
+// Model renders in its own space (no <Center>): engines at the base (Y ~0–6), the
+// instrument unit at ~Y 83, and the rebuilt spacecraft + escape tower on top of it
+// reach ~Y 115 (see nosecone.ts). The assembled center is therefore ~Y 57. Orbit +
+// all cameras target that center. Tuned live via headless screenshots.
+export const ORBIT_TARGET = [0, 57, 0] as [number, number, number]
 
 export const HOME_CAMERA = {
-  position: [44, 40, 138] as [number, number, number],
+  position: [56, 57, 176] as [number, number, number],
   lookAt: ORBIT_TARGET,
 }
 
-// Wide framing for the exploded stack (it grows ~70 units taller when apart).
+// Wide framing for the exploded stack (it grows ~70 units taller when apart, so the
+// tower-topped stack reaches ~Y 185).
 export const EXPLODE_CAMERA = {
-  position: [92, 78, 250] as [number, number, number],
-  lookAt: [0, 70, 0] as [number, number, number],
+  position: [104, 100, 292] as [number, number, number],
+  lookAt: [0, 90, 0] as [number, number, number],
 }
 
 export const hotspots: Hotspot[] = [

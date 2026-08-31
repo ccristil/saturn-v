@@ -4,6 +4,11 @@ import { useGLTF } from '@react-three/drei'
 import { Box3, Vector3, Matrix4, Object3D } from 'three'
 import { applyStageIsolate, clearStageIsolate } from './isolate'
 import { computeStageMoves, type StageMove } from './explode'
+import { addSpacecraftTop } from './nosecone'
+import { addMarkings } from './markings'
+import { addWeathering } from './weathering'
+import { applyMetallicLook } from './materials'
+import { addEngineDetail } from './enginedetail'
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/saturn-v.glb`
 
@@ -64,6 +69,11 @@ export function Stack({
   // Run once, synchronously, before <Center> measures the bounds.
   useMemo(() => {
     fixDisplacedParts(scene)
+    addSpacecraftTop(scene) // rebuild the missing spacecraft + escape tower on top of the IU
+    addMarkings(scene) // add the Apollo 11 markings (S-IC flag + red "USA", S-II "UNITED STATES")
+    addWeathering(scene) // base scorch + body grime streaks (launch-day look)
+    addEngineDetail(scene) // corrugated tube-wall ribs on the F-1 nozzles
+    applyMetallicLook(scene) // metal reflects the environment; painted body stays satin
     moves.current = computeStageMoves(scene)
   }, [scene])
 

@@ -1,7 +1,11 @@
 import { Suspense, useEffect, useState } from 'react'
+import { NoToneMapping } from 'three'
 import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls, Html } from '@react-three/drei'
+import { OrbitControls, Html, Environment, Lightformer } from '@react-three/drei'
+import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing'
+import { ToneMappingMode } from 'postprocessing'
 import { Stack } from './scene/Stack'
+import { Ground } from './scene/Ground'
 import { Callouts } from './scene/Callouts'
 import { CameraRig, type CamPose } from './scene/CameraRig'
 import { Card } from './ui/Card'
@@ -118,12 +122,33 @@ export default function App() {
 
   return (
     <>
-      <Canvas camera={{ position: HOME_CAMERA.position, fov: 40 }} dpr={[1, 2]}>
-        <color attach="background" args={['#0b0e14']} />
+      <Canvas
+        camera={{ position: HOME_CAMERA.position, fov: 40 }}
+        dpr={[1, 2]}
+        // AA + tone mapping are handled by the EffectComposer below, so turn the
+        // renderer's own off (otherwise ACES would be applied twice).
+        gl={{ antialias: false, toneMapping: NoToneMapping }}
+      >
+        {/* Brighter than the --void token: ACES (below) darkens the whole frame, so
+            this input value lands back at the intended graphite-blue after tone mapping. */}
+        <color attach="background" args={['#161d29']} />
 
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[12, 18, 10]} intensity={1.6} />
-        <directionalLight position={[-10, 6, -12]} intensity={0.5} />
+        <ambientLight intensity={0.25} />
+        <directionalLight position={[12, 18, 10]} intensity={1.4} />
+        <directionalLight position={[-10, 6, -12]} intensity={0.45} />
+
+        {/* Procedural studio environment — built from light panels, no HDR file.
+            Gives the metal reflections; rendered once (frames={1}), low-res for perf.
+            background stays off so the void backdrop is untouched. */}
+        <Environment resolution={256} frames={1}>
+          {/* broad key + sky fill */}
+          <Lightformer intensity={3.6} position={[14, 22, 10]} scale={[16, 16, 1]} color="#ffffff" />
+          <Lightformer intensity={1.0} position={[-16, 10, -8]} scale={[12, 10, 1]} color="#adbdd4" />
+          {/* tall narrow strips — reflect as vertical highlights down the metal cylinders */}
+          <Lightformer intensity={2.4} position={[9, 2, 14]} scale={[2.5, 22, 1]} color="#ffffff" />
+          <Lightformer intensity={1.5} position={[-7, -2, 13]} scale={[2, 18, 1]} color="#dfe6f0" />
+          <Lightformer intensity={0.6} form="ring" position={[0, 34, 4]} scale={[10, 10, 1]} color="#ffffff" />
+        </Environment>
 
         <Suspense
           fallback={
@@ -133,6 +158,7 @@ export default function App() {
           }
         >
           <Stack isolateStages={activeHotspot?.isolate} exploded={exploded} />
+          <Ground />
           {!exploded && slideIndex === null && (
             <Callouts activeIndex={activeIndex} onSelect={setActiveIndex} />
           )}
@@ -141,6 +167,22 @@ export default function App() {
         <OrbitControls makeDefault enableDamping target={HOME_CAMERA.lookAt} />
         <CameraRig pose={pose} />
         <PoseLogger />
+
+        {/* Cinematic pass: filmic tone mapping (turns the linear render into a
+            photographic curve) + a restrained bloom. The bloom threshold is high so
+            only the bright metal specular highlights lift — the gold callout accent
+            and painted body stay as-is. multisampling handles edge AA (renderer AA
+            is off above). Kept cheap for the 60fps-on-integrated-graphics budget. */}
+        <EffectComposer multisampling={4} enableNormalPass={false}>
+          <Bloom
+            mipmapBlur
+            intensity={0.5}
+            luminanceThreshold={0.9}
+            luminanceSmoothing={0.3}
+            radius={0.7}
+          />
+          <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+        </EffectComposer>
       </Canvas>
 
       <Card hotspot={activeHotspot} />

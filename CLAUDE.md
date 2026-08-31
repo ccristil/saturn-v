@@ -21,7 +21,8 @@ Pinned. Do not swap these out.
 
 - **Vite** + **React** + **TypeScript**
 - **three.js** via **@react-three/fiber**
-- **@react-three/drei** — `OrbitControls`, `Html`, `useGLTF`, `Line`. (No `Bounds`/`Center` — framing is explicit; see **Model & coordinate system** below.)
+- **@react-three/drei** — `OrbitControls`, `Html`, `useGLTF`, `Line`, `Environment`, `Lightformer`. (No `Bounds`/`Center` — framing is explicit; see **Model & coordinate system** below.)
+- **@react-three/postprocessing** (+ `postprocessing`) — one `EffectComposer` in `App.tsx`: ACES filmic tone mapping (final pass) + a restrained `Bloom` (threshold 0.9, so only bright metal specular highlights lift — the gold callout stays un-glowed). Renderer AA/tone-mapping are off (`gl={{ antialias:false, toneMapping: NoToneMapping }}`); the composer does both.
 - Plain CSS modules or a single stylesheet. No Tailwind, no component library.
 
 Ask before adding any dependency. This project should stay small enough to reason about in one sitting.
@@ -116,13 +117,19 @@ src/
     Stack.tsx                  # loads the glb; assembles it (fix displaced parts, close gaps); drives explode + isolate
     isolate.ts                 # dim all meshes except the named stage(s) (per-mesh cloned materials)
     explode.ts                 # precompute each stage's upward move; Stack animates it
+    nosecone.ts                # rebuilds the missing spacecraft top (SLA/CSM/escape tower) from primitives, sized to the measured IU
+    markings.ts                # canvas decals: S-IC flag + red "USA"; S-II vertical "UNITED STATES". Parented per-stage so they ride explode/isolate
+    weathering.ts              # launch-day grime: bolder base scorch (flame licks) + vertical body grime streaks on S-IC/S-II. Full-360 overlays, parented per-stage (rides explode/isolate)
+    Ground.tsx                 # grounds the rocket: drei ContactShadows (one-frame bake — S-IC base is the fixed explode reference) + a faint radial studio-floor glow that fades to transparent. Mounted inside <Suspense>
+    materials.ts               # metallic look: engines/metal rings reflect the <Environment>, painted body kept satin (not glossy)
+    enginedetail.ts            # corrugated tube-wall ribs on the F-1 nozzles (rings hugging each engine's measured bell profile)
     Callout.tsx                # one billboarded leader line + numbered tag (always faces camera)
     Callouts.tsx               # resolves each hotspot's `anchor` to a real node position; renders Callouts
     CameraRig.tsx              # eased arc between camera poses (home / hotspot / explode)
   ui/
     Card.tsx                   # the popup panel (DOM overlay)
     Progress.tsx               # 01 · 02 · 03 · 04 · 05 indicator
-  App.tsx                      # owns activeIndex + exploded; keyboard; explode button; credit
+  App.tsx                      # owns activeIndex + exploded; keyboard; explode button; credit; lights + procedural <Environment> (Lightformers, no HDR file)
 ```
 
 ---
@@ -134,12 +141,13 @@ src/
 - **Stage groups:** `S-IC`, `Interstage`, `S-II`, `S-II_Top`, `S-IVB`, `Instrument_Unit` (bottom → top).
 - **Engines** (nested under their stage): `F1`, `F1.001–004` (5× F-1 under S-IC); `J2`, `J2.001–004` (5× J-2 under S-II); `J2.005` (1× J-2 under S-IVB).
 - **No interior geometry** — exterior shells + engines only (no tanks/LM). "Go inside" = the explode revealing engine clusters, not a cutaway.
+- **No spacecraft in the GLB** — the raw model is launch-vehicle-only; its topmost node is the `Instrument_Unit` ring, so the stack shipped flat-topped. `nosecone.ts` rebuilds the missing top (Spacecraft-LM Adapter taper → Command/Service Module → Launch Escape System tower) from primitives, sized to the IU's *measured* radius and attached as a child of the `Instrument_Unit` node — so it rides explode and dims with isolate automatically, no changes to `explode.ts`/`isolate.ts`.
 
 **Assembly (in `Stack.tsx`, runs once on load).** The raw file has quirks that `fixDisplacedParts` corrects: three connector rings (`Interstage`, `S-II_Top`, `Instrument_Unit`) ship ~20 units off-axis in −Z → pulled to z=0; and the upper stages sit with small gaps → nudged down (cumulative) so the stack reads as one flush body. Tuned constants live in the `ASSEMBLE` table.
 
-**No `<Center>`.** Auto-centering was removed (its bbox measurement got corrupted by the callout). The model renders in its **own coordinate space**: engines at the base ~**Y 0–6**, top ~**Y 83**, assembled center ~**Y 40**. Everything is authored against that:
+**No `<Center>`.** Auto-centering was removed (its bbox measurement got corrupted by the callout). The model renders in its **own coordinate space**: engines at the base ~**Y 0–6**, the Instrument Unit at ~**Y 83**, and the rebuilt spacecraft + escape tower (see `nosecone.ts`) reaching ~**Y 115**, so the assembled center is ~**Y 57**. Everything is authored against that:
 
-- `ORBIT_TARGET = [0, 40, 0]` — OrbitControls target + home `lookAt`.
+- `ORBIT_TARGET = [0, 57, 0]` — OrbitControls target + home `lookAt`.
 - `HOME_CAMERA`, `EXPLODE_CAMERA`, and each hotspot `camera` are all in this space, in `hotspots.ts`.
 - **Adding a hotspot:** give it an `anchor` (a node name above), a `camera` pose looking at that region, and an `isolate` stage. Capture the pose live: the temp `PoseLogger` in `App.tsx` logs `position`/`lookAt` to the console on **`p`** — paste those in. (Then remove `PoseLogger` before ship.)
 
@@ -230,6 +238,13 @@ _Update this as you go — it's what a fresh session reads first._
 - [x] Hotspot 1 (F-1 engines) dive-in — full loop end-to-end: arc-in `CameraRig`, isolate-by-stage-name dim, `anchor`-resolved + camera-billboarded leader line, DOM card, progress strip. Keyboard →/←/Esc/1–5; marker click; touch via tag.
 - [x] Camera framing tuned (via Playwright) — home (centered whole rocket), hotspot 1 dive-in, and explode all frame correctly at landscape aspect.
 - [x] **Stage explode** — toggle (`X` / button) separates the six stages to reveal the engine clusters; camera pulls back; reassembles. (This is an added feature beyond the original 5-hotspot brief, at the user's request.)
+- [x] **Spacecraft top rebuilt** — the GLB is launch-vehicle-only (topmost node = `Instrument_Unit`), so the stack was flat-topped. `nosecone.ts` adds the SLA taper → CSM → Launch Escape tower from primitives, sized to the measured IU and parented to the IU node so it rides explode + isolate. Cameras re-framed for the taller stack (center Y 40→57).
+- [x] **First-stage markings** — `markings.ts` adds the US flag + red "USA" (Barlow Condensed, drawn to a canvas and repainted once the woff2 loads) as curved decals hugging the S-IC skin, matched to the on-pad reference photo (flag mid-lower, "USA" below it). Each decal's arc width is derived from its texture aspect ratio so nothing stretches, and the radius is sampled from the real S-IC geometry (median vertex radius) so they sit flush. On one face (photo-accurate), parented to `S-IC` so they ride explode + isolate. (The vertical "UNITED STATES" that belongs on the S-II second stage isn't added yet.)
+- [x] **Metallic + weathering (subtle)** — `materials.ts` retunes the GLB's shared materials so the "Metal" family (engines, interstage rings, skirts) reflects a new procedural `<Environment>` (drei Lightformers in App.tsx — no HDR file, `frames={1}`, low-res for perf), while the "Non_Metal" painted body stays satin. Ambient dropped to 0.25 to compensate. Plus a faint full-circle **engine-soot** gradient at the base (in `markings.ts`). Best seen exploded (gold metal ring rims). "Subtle" level per the user; can dial up to grime/streaks if wanted.
+- [x] **S-II "UNITED STATES" + F-1 nozzle detail** — added vertical "UNITED STATES" (black, Barlow Condensed) on the second stage in `markings.ts`; and `enginedetail.ts` wraps each F-1 nozzle in corrugated tube-wall ribs (torus rings hugging the engine's measured bell profile — sampled per Y-slice, gap-filled + smoothed, ribbed from exit up to the throat). Both ride explode + isolate.
+- [x] **Cinematic post-processing** — `EffectComposer` in `App.tsx`: ACES filmic tone mapping + restrained bloom on metal highlights (see **Stack**). The `--void` background input was brightened to `#161d29` so it lands back at the intended graphite-blue *after* ACES (which otherwise crushes it to pure black). Best seen exploded (gold ring rims catch a warm glow).
+- [x] **Grounding + bolder weathering** — `Ground.tsx` anchors the rocket with a contact shadow + faint studio-floor glow (sits correctly under the base in home/explode; grounds the engine cluster in the dive-in). `weathering.ts` replaces the old faint soot with a bolder flame-licked base scorch + vertical body grime streaks on the S-IC/S-II (full-360, ride explode/isolate). Both tuned via Playwright across home/base/body/explode/dive-in.
+- [x] **Roll pattern — confirmed baked in, no work needed.** The devPilot GLB's texture already carries the black roll pattern (black interstage, S-IC forward-skirt band, S-II bands, engine fairings) and it's photo-accurate. `markings.ts` only adds what's genuinely missing (flag + red "USA" + vertical "UNITED STATES"). Do **not** rebuild the roll pattern from decals — it would fight the baked texture.
 - [ ] **Hotspots 2–5** — not built. Add entries to `hotspots.ts` (anchor + camera pose + isolate stage); capture poses with `PoseLogger` (`p`).
 - [ ] Real copy — hotspot 1 is PLACEHOLDER; presenter writes the actual stories.
 - [ ] Remove the temp `PoseLogger` from `App.tsx` before ship.
