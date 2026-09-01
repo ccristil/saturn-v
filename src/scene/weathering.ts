@@ -12,15 +12,13 @@ import {
   FrontSide,
 } from 'three'
 
-// Launch-day weathering — bolder than clean CAD, still believable. Two full-360°
-// overlays wrap the white stages:
-//   1. Base scorch — soot pooled at the engine junction with irregular flame licks
-//      rising up between the engines, so the S-IC base reads as fired hardware.
-//   2. Body grime — faint vertical streaks running down the S-IC and S-II skins
-//      (rain/handling staining that drips from panel seams), plus a few horizontal
-//      seam-dirt lines.
-// Each overlay is a thin cylinder hugging the measured skin radius, parented to its
-// stage (world transform preserved) so it rides explode + dims with isolate.
+// Launch-day weathering — bolder than clean CAD, still believable. A full-360° grime
+// overlay wraps the white stages: faint vertical streaks running down the S-IC and
+// S-II skins (rain/handling staining that drips from panel seams) plus a few
+// horizontal seam-dirt lines. The overlay is a thin cylinder hugging the measured skin
+// radius, parented to its stage (world transform preserved) so it rides explode + dims
+// with isolate. (An earlier base-scorch band read as a hard shadow above the engines
+// from low angles, so it was removed.)
 
 // The true skin radius of a stage within a height band: median radial distance of its
 // vertices from the vehicle axis (median shrugs off systems tunnels / stray fins).
@@ -50,41 +48,6 @@ function texFromCanvas(canvas: HTMLCanvasElement): CanvasTexture {
   tex.colorSpace = SRGBColorSpace
   tex.anisotropy = 8
   return tex
-}
-
-// Base scorch: a dark band pooled at the bottom with soft vertical licks rising out
-// of it. Wide canvas = the full circumference; height maps to the scorch band.
-function scorchTexture(): CanvasTexture {
-  const w = 1024
-  const h = 256
-  const canvas = document.createElement('canvas')
-  canvas.width = w
-  canvas.height = h
-  const ctx = canvas.getContext('2d')!
-
-  // Pooled soot at the base, fading up.
-  const g = ctx.createLinearGradient(0, h, 0, 0) // bottom → top
-  g.addColorStop(0, 'rgba(14,11,9,0.82)')
-  g.addColorStop(0.28, 'rgba(16,13,11,0.45)')
-  g.addColorStop(0.6, 'rgba(18,15,12,0.12)')
-  g.addColorStop(1, 'rgba(18,15,12,0)')
-  ctx.fillStyle = g
-  ctx.fillRect(0, 0, w, h)
-
-  // Irregular flame licks rising from the base.
-  const licks = 32
-  for (let i = 0; i < licks; i++) {
-    const x = Math.random() * w
-    const width = 12 + Math.random() * 50
-    const top = h * (0.4 + Math.random() * 0.5) // how high the lick reaches (from base)
-    const lg = ctx.createLinearGradient(0, h, 0, h - top)
-    const a = 0.3 + Math.random() * 0.34
-    lg.addColorStop(0, `rgba(12,10,8,${a})`)
-    lg.addColorStop(1, 'rgba(12,10,8,0)')
-    ctx.fillStyle = lg
-    ctx.fillRect(x - width / 2, h - top, width, top)
-  }
-  return texFromCanvas(canvas)
 }
 
 // Body grime: mostly transparent, with thin vertical drip-streaks and a few faint
@@ -182,7 +145,7 @@ export function addWeathering(root: Object3D): void {
   if (!sic) return
   root.updateMatrixWorld(true)
 
-  // --- S-IC: base scorch + body grime ---
+  // --- S-IC: body grime ---
   const sicBox = new Box3().setFromObject(sic)
   if (!sicBox.isEmpty()) {
     const yMin = sicBox.min.y
@@ -191,12 +154,9 @@ export function addWeathering(root: Object3D): void {
       (stageRadius(sic, yMin + 0.28 * h, yMin + 0.52 * h) ??
         Math.min(sicBox.max.x - sicBox.min.x, sicBox.max.z - sicBox.min.z) / 2) + 0.03
 
-    const scorchH = 0.3 * h
-    const scorch = overlay(rad, yMin + scorchH / 2, scorchH, scorchTexture())
-    // Grime over the upper ~80% of the stage (clear of the scorch band).
     const grimeH = 0.78 * h
     const grime = overlay(rad, yMin + 0.55 * h, grimeH, grimeTexture())
-    attach(sic, 'Weathering-SIC', [scorch, grime])
+    attach(sic, 'Weathering-SIC', [grime])
   }
 
   // --- S-II: body grime only ---
