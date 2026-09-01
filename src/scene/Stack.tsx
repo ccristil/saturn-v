@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
-import { Box3, Vector3, Matrix4, Object3D } from 'three'
+import { Box3, Vector3, Matrix4, Object3D, Group } from 'three'
 import { applyStageIsolate, clearStageIsolate } from './isolate'
 import { computeStageMoves, type StageMove } from './explode'
 import { addSpacecraftTop } from './nosecone'
@@ -55,14 +55,19 @@ function smootherstep(t: number) {
   return t * t * t * (t * (t * 6 - 15) + 10)
 }
 
+const SPIN_SPEED = 0.35 // rad/s — a subtle turn (~18s per revolution) for the hero preview
+
 export function Stack({
   isolateStages,
   exploded = false,
+  spin = false,
 }: {
   isolateStages?: string[]
   exploded?: boolean
+  spin?: boolean
 }) {
   const { scene } = useGLTF(MODEL_URL)
+  const spinGroup = useRef<Group>(null)
   const moves = useRef<StageMove[]>([])
   const prog = useRef(0)
 
@@ -84,17 +89,39 @@ export function Stack({
   }, [isolateStages, scene])
 
   useFrame((_, delta) => {
+    // Explode animation.
     const goal = exploded ? 1 : 0
-    if (prog.current === goal) return
-    const dir = goal > prog.current ? 1 : -1
-    prog.current = Math.max(0, Math.min(1, prog.current + (dir * delta) / EXPLODE_S))
-    const e = smootherstep(prog.current)
-    for (const m of moves.current) {
-      m.node.position.copy(m.base).addScaledVector(m.offset, e)
+    if (prog.current !== goal) {
+      const dir = goal > prog.current ? 1 : -1
+      prog.current = Math.max(0, Math.min(1, prog.current + (dir * delta) / EXPLODE_S))
+      const e = smootherstep(prog.current)
+      for (const m of moves.current) {
+        m.node.position.copy(m.base).addScaledVector(m.offset, e)
+      }
+    }
+
+    // Hero-preview spin (around the vehicle's central axis, so it turns in place).
+    // When it stops, ease the rotation back to front (0) so markings + callouts align.
+    const g = spinGroup.current
+    if (g) {
+      if (spin) {
+        g.rotation.y += delta * SPIN_SPEED
+      } else if (g.rotation.y !== 0) {
+        // Normalize to (-π, π], then ease toward 0.
+        let cur = g.rotation.y % (Math.PI * 2)
+        if (cur > Math.PI) cur -= Math.PI * 2
+        else if (cur < -Math.PI) cur += Math.PI * 2
+        const next = cur * (1 - Math.min(1, delta * 3))
+        g.rotation.y = Math.abs(next) < 0.002 ? 0 : next
+      }
     }
   })
 
-  return <primitive object={scene} />
+  return (
+    <group ref={spinGroup}>
+      <primitive object={scene} />
+    </group>
+  )
 }
 
 useGLTF.preload(MODEL_URL)

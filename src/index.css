@@ -222,11 +222,21 @@ canvas {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: var(--void);
+  background-color: var(--void);
   display: flex;
   flex-direction: column;
   transform-origin: 50% 42%;
   animation: deck-in 240ms ease;
+  /* Fade the opaque backdrop away when we reach the hero slide, revealing the live model. */
+  transition: background-color 500ms ease;
+}
+/* Hero (last) slide: the deck goes transparent so the tiny spinning 3D model shows on
+   the right. Text is held to the left half so it clears the model. */
+.deck--hero {
+  background-color: transparent;
+}
+.deck__slide--hero {
+  padding-right: 46vw;
 }
 /* Handoff into the 3D: the deck dissolves + pushes forward to reveal the dive-in.
    Uses an animation (not a transition) — animations outrank the deck-in opacity. */

@@ -11,7 +11,7 @@ import { CameraRig, type CamPose } from './scene/CameraRig'
 import { Card } from './ui/Card'
 import { Progress } from './ui/Progress'
 import { Presentation } from './ui/Presentation'
-import { hotspots, HOME_CAMERA, EXPLODE_CAMERA, MODEL_CREDIT } from './content/hotspots'
+import { hotspots, HOME_CAMERA, EXPLODE_CAMERA, HERO_CAMERA, MODEL_CREDIT } from './content/hotspots'
 import { slides } from './content/slides'
 
 // TEMP (Task 8): press 'p' to log the current camera pose for hotspots.ts. Removed after tuning.
@@ -65,14 +65,16 @@ export default function App() {
     if (slideIndex === null || deckExiting) return
     if (slideIndex < slides.length - 1) setSlideIndex(slideIndex + 1)
     else {
-      // Past the last slide → hand off into the 3D. Start the camera dive behind
-      // the deck, then dissolve the deck over it (see .deck--exiting, ~820ms).
-      setActiveIndex(0)
+      // Past the last (hero) slide → the reveal: the tiny spinning model grows into the
+      // real thing. Switch the camera pose to HOME (grow + center) and stop the spin,
+      // then dissolve the deck text over it. Lands on the wide shot; presenter drives
+      // hotspots from there.
+      setActiveIndex(null)
       setDeckExiting(true)
       window.setTimeout(() => {
         setSlideIndex(null)
         setDeckExiting(false)
-      }, 820)
+      }, 1100)
     }
   }
 
@@ -114,11 +116,19 @@ export default function App() {
 
   const activeHotspot = activeIndex === null ? null : hotspots[activeIndex]
 
+  // The last slide (kind 'hero') shows the live model, tiny + spinning, on the right.
+  // onHeroSlide keeps the deck transparent through the exit dissolve; heroPreview drives
+  // the small-right camera + spin, and drops on 'next' so the model grows into HOME.
+  const onHeroSlide = slideIndex !== null && slides[slideIndex]?.kind === 'hero'
+  const heroPreview = onHeroSlide && !deckExiting
+
   const pose: CamPose = exploded
     ? EXPLODE_CAMERA
-    : activeHotspot === null
-      ? HOME_CAMERA
-      : { position: activeHotspot.camera.position, lookAt: activeHotspot.camera.lookAt }
+    : heroPreview
+      ? HERO_CAMERA
+      : activeHotspot === null
+        ? HOME_CAMERA
+        : { position: activeHotspot.camera.position, lookAt: activeHotspot.camera.lookAt }
 
   return (
     <>
@@ -157,7 +167,7 @@ export default function App() {
             </Html>
           }
         >
-          <Stack isolateStages={activeHotspot?.isolate} exploded={exploded} />
+          <Stack isolateStages={activeHotspot?.isolate} exploded={exploded} spin={heroPreview} />
           <Ground />
           {!exploded && slideIndex === null && (
             <Callouts activeIndex={activeIndex} onSelect={setActiveIndex} />
@@ -209,6 +219,7 @@ export default function App() {
           slides={slides}
           index={slideIndex}
           exiting={deckExiting}
+          hero={onHeroSlide}
           onNext={nextSlide}
           onPrev={prevSlide}
           onExit={exitPresentation}

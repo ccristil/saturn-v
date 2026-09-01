@@ -37,6 +37,16 @@ export const EXPLODE_CAMERA = {
   lookAt: [0, 90, 0] as [number, number, number],
 }
 
+// Hero preview for the last ("hero") slide: the whole rocket framed small and pushed
+// to the RIGHT of screen so the deck text sits on the left. The target is offset left
+// of the vehicle axis (x=0), so the on-axis rocket renders right of center; the far
+// distance shrinks it. On "next" the camera eases from here to HOME — the tiny spinning
+// model grows into the real thing. Tuned live via screenshots.
+export const HERO_CAMERA = {
+  position: [26, 60, 344] as [number, number, number],
+  lookAt: [-54, 50, 0] as [number, number, number],
+}
+
 export const hotspots: Hotspot[] = [
   {
     id: 'f1-engines',

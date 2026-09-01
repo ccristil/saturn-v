@@ -3,7 +3,7 @@
 // walkthrough (App starts hotspot 1). All copy here is PLACEHOLDER filler.
 export type Slide = {
   id: string
-  kind?: 'cover' | 'content'
+  kind?: 'cover' | 'content' | 'hero' // 'hero' = last slide: a tiny spinning live model
   eyebrow?: string // small mono label above the title
   title: string
   subtitle?: string
@@ -28,8 +28,9 @@ export const slides: Slide[] = [
   },
   {
     id: 'slide-3',
+    kind: 'hero',
     title: 'Filler slide three',
-    subtitle: 'Placeholder — advance to step into the vehicle.',
-    body: ['PLACEHOLDER. Advancing past this slide drops into the 3D walkthrough at the F-1 engines.'],
+    subtitle: 'Placeholder — that little rocket on the right is live. Advance to step inside it.',
+    body: ['PLACEHOLDER. Advancing past this slide grows the model into the full 3D walkthrough.'],
   },
 ]

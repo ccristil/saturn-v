@@ -6,6 +6,7 @@ export function Presentation({
   slides,
   index,
   exiting = false,
+  hero = false,
   onNext,
   onPrev,
   onExit,
@@ -13,6 +14,7 @@ export function Presentation({
   slides: Slide[]
   index: number
   exiting?: boolean
+  hero?: boolean // last slide: deck goes transparent so the live 3D model shows behind
   onNext: () => void
   onPrev: () => void
   onExit: () => void
@@ -21,7 +23,11 @@ export function Presentation({
   const atStart = index === 0
 
   return (
-    <div className={exiting ? 'deck deck--exiting' : 'deck'}>
+    <div
+      className={['deck', hero && 'deck--hero', exiting && 'deck--exiting']
+        .filter(Boolean)
+        .join(' ')}
+    >
       <button className="deck__exit" onClick={onExit} aria-label="Exit presentation">
         ✕
       </button>
