@@ -54,7 +54,7 @@ export function Presentation({
         <span className="deck__counter">
           {String(index + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')}
         </span>
-        <button className="deck__nav" onClick={onNext}>
+        <button className="deck__nav deck__nav--primary" onClick={onNext}>
           Next →
         </button>
       </div>

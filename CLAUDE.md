@@ -38,7 +38,7 @@ Explicitly out of scope. Do not build these, do not suggest them.
 - Mobile or responsive layouts — this runs on one laptop at one resolution
 - Tests beyond "it renders and doesn't throw"
 - Physics, particle effects, launch animation, sound
-- Any runtime CDN dependency. **It must work with the wifi off.** Self-host fonts, images, and the model.
+- Any runtime CDN dependency. ~~**It must work with the wifi off.**~~ → **relaxed by the user** (the talk will have wifi). The LeaderFactor rebrand loads **Fustat + Spectral from Google Fonts via CDN** (`@import` in `index.css`). Images and the model stay self-hosted. If wifi-off ever matters again, self-host these two woff2.
 
 ---
 
@@ -172,6 +172,8 @@ Non-negotiable. These are what separate a demo from a presentation.
 
 ## Design direction
 
+> **⚠️ SUPERSEDED — rebranded to LeaderFactor (company presentation).** The whole interface now follows LeaderFactor's brand (scraped from `leaderfactor.com/styles/lf-tokens.css`), not the Apollo-doc aesthetic below. The tokens live in `src/index.css` `:root`. Current brand: **navy backdrop** (`--void #111a35`, matched to the ACES-rendered 3D scene bg `#17203f`); **Fustat** (sans, all UI/titles) + **Spectral italic** (the reserved serif accent — slide + card subtitles, in warm sand `#af8f6b`); **accent-blue** (`--accent #0c81cf`, fill `#066db1`) replaces the gold foil as the single accent (active callout, tags, primary buttons); **fully-pill buttons** with light-glass fill on dark, accent-filled for the primary CTA (deck "Next", active Explode toggle); flat, `0.18s ease` motion. The section below is the *original* vision, kept for history.
+
 The reference is **Apollo-era engineering documentation**, not sci-fi and not a modern SaaS dashboard. Technical drawings, dimension callouts, part-number tags, checklist typography.
 
 **Palette**
@@ -246,6 +248,7 @@ _Update this as you go — it's what a fresh session reads first._
 - [x] **Grounding + bolder weathering** — `Ground.tsx` anchors the rocket with a contact shadow + faint studio-floor glow (sits correctly under the base in home/explode; grounds the engine cluster in the dive-in). `weathering.ts` adds vertical body grime streaks on the S-IC/S-II (full-360, ride explode/isolate), tuned via Playwright across home/base/body/explode/dive-in. (An earlier base-scorch band was removed — it read as a hard shadow above the engines from low angles.)
 - [x] **Roll pattern — confirmed baked in, no work needed.** The devPilot GLB's texture already carries the black roll pattern (black interstage, S-IC forward-skirt band, S-II bands, engine fairings) and it's photo-accurate. `markings.ts` only adds what's genuinely missing (flag + red "USA" + vertical "UNITED STATES"). Do **not** rebuild the roll pattern from decals — it would fight the baked texture.
 - [x] **Hero-slide reveal** — the last deck slide (`kind: 'hero'` in `slides.ts`) goes transparent (`.deck--hero`) so the *live* 3D model shows as a tiny, subtly-spinning rocket on the right (camera `HERO_CAMERA` — far back + target offset left of the axis; spin via a wrapper group in `Stack.tsx` behind a `spin` prop). On 'next' the pose eases `HERO → HOME` (grow + center), the spin eases back to front so markings/callouts realign, and the deck text dissolves — selling that the tiny model *is* the real one. The old handoff dove to hotspot 1; it now lands on the wide HOME shot (presenter drives hotspots from there). Camera state lives in `App.tsx` (`onHeroSlide` / `heroPreview`).
+- [x] **LeaderFactor rebrand (whole interface)** — retokenized `index.css` to LeaderFactor's brand (see the superseded **Design direction** note): Fustat + Spectral italic via Google Fonts CDN, navy palette, accent-blue, fully-pill buttons. Touches deck (slides/nav/eyebrow/subtitle), HUD buttons, in-scene `Card`, `Callout` (leader-line colors in `Callout.tsx`), `Progress`, credit; scene bg → navy in `App.tsx`. Verified via Playwright across cover/hero/home/dive-in. (Barlow Condensed kept — it's the rocket's painted markings, not UI.)
 - [ ] **Hotspots 2–5** — not built. Add entries to `hotspots.ts` (anchor + camera pose + isolate stage); capture poses with `PoseLogger` (`p`).
 - [ ] Real copy — hotspot 1 is PLACEHOLDER; presenter writes the actual stories.
 - [ ] Remove the temp `PoseLogger` from `App.tsx` before ship.

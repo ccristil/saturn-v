@@ -3,8 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import { Vector3, Group } from 'three'
 
-const FOIL = '#d4a24c'
-const RULE = '#2a3444'
+const FOIL = '#0c81cf' // LeaderFactor accent-blue-bright — the active leader line
+const RULE = '#3a4056' // muted slate — inactive leader line, reads on the navy backdrop
 const DRAW_MS = 300
 
 // Leader-line dimensions in the callout's local (billboarded) plane.

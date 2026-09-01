@@ -139,9 +139,9 @@ export default function App() {
         // renderer's own off (otherwise ACES would be applied twice).
         gl={{ antialias: false, toneMapping: NoToneMapping }}
       >
-        {/* Brighter than the --void token: ACES (below) darkens the whole frame, so
-            this input value lands back at the intended graphite-blue after tone mapping. */}
-        <color attach="background" args={['#161d29']} />
+        {/* LeaderFactor navy backdrop. Brighter than the DOM --void token because ACES
+            (below) darkens the whole frame — this input lands near the deck's navy. */}
+        <color attach="background" args={['#17203f']} />
 
         <ambientLight intensity={0.25} />
         <directionalLight position={[12, 18, 10]} intensity={1.4} />
