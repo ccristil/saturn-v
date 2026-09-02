@@ -7,11 +7,20 @@ import { ToneMappingMode } from 'postprocessing'
 import { Stack } from './scene/Stack'
 import { Ground } from './scene/Ground'
 import { Callouts } from './scene/Callouts'
+import { Compare, preloadCompare } from './scene/Compare'
 import { CameraRig, type CamPose } from './scene/CameraRig'
 import { Card } from './ui/Card'
 import { Progress } from './ui/Progress'
 import { Presentation } from './ui/Presentation'
-import { hotspots, HOME_CAMERA, EXPLODE_CAMERA, HERO_CAMERA, MODEL_CREDIT } from './content/hotspots'
+import {
+  hotspots,
+  HOME_CAMERA,
+  EXPLODE_CAMERA,
+  HERO_CAMERA,
+  COMPARE_CAMERA,
+  MODEL_CREDIT,
+  COMPARE_CREDIT,
+} from './content/hotspots'
 import { slides } from './content/slides'
 
 // TEMP (Task 8): press 'p' to log the current camera pose for hotspots.ts. Removed after tuning.
@@ -46,6 +55,12 @@ export default function App() {
   // presenter steps these first; only then does 'next' advance the slide.
   const [revealed, setRevealed] = useState(0)
   const bulletCount = (i: number) => slides[i]?.bullets?.length ?? 0
+
+  // Warm every slide's comparison model at startup: mounting one cold, mid-talk,
+  // would suspend and blank the scene for as long as the download takes.
+  useEffect(() => {
+    for (const s of slides) if (s.compare) preloadCompare(s.compare.model)
+  }, [])
 
   const toggleExplode = () => {
     setExploded((v) => !v)
@@ -140,13 +155,20 @@ export default function App() {
   const onHeroSlide = slideIndex !== null && slides[slideIndex]?.kind === 'hero'
   const heroPreview = onHeroSlide && !deckExiting
 
+  // A slide can park a second vehicle beside the Saturn V, to scale. It's mounted only
+  // while that slide is up — the handoff drops it as the deck dissolves, so the wide
+  // shot the presenter lands on is the Saturn V alone.
+  const compare = slideIndex !== null && !deckExiting ? slides[slideIndex]?.compare : undefined
+
   const pose: CamPose = exploded
     ? EXPLODE_CAMERA
-    : heroPreview
-      ? HERO_CAMERA
-      : activeHotspot === null
-        ? HOME_CAMERA
-        : { position: activeHotspot.camera.position, lookAt: activeHotspot.camera.lookAt }
+    : compare
+      ? COMPARE_CAMERA
+      : heroPreview
+        ? HERO_CAMERA
+        : activeHotspot === null
+          ? HOME_CAMERA
+          : { position: activeHotspot.camera.position, lookAt: activeHotspot.camera.lookAt }
 
   return (
     <>
@@ -186,7 +208,19 @@ export default function App() {
           }
         >
           <Stack isolateStages={activeHotspot?.isolate} exploded={exploded} spin={heroPreview} />
-          <Ground />
+          {compare && (
+            /* its own boundary: if the model is somehow not warm yet, it must not
+               take the Saturn V down with it */
+            <Suspense fallback={null}>
+              <Compare
+                model={compare.model}
+                heightM={compare.heightM}
+                x={compare.x ?? -26}
+                spin={heroPreview}
+              />
+            </Suspense>
+          )}
+          <Ground bakeKey={compare?.model ?? ''} />
           {!exploded && slideIndex === null && (
             <Callouts
               activeIndex={activeIndex}
@@ -218,7 +252,9 @@ export default function App() {
       </Canvas>
 
       <Card hotspot={activeHotspot} />
-      <Progress hotspots={hotspots} activeIndex={activeIndex} />
+      {/* hotspot progress belongs to the walkthrough — the deck's own counter owns
+          that corner while a slide is up */}
+      {slideIndex === null && <Progress hotspots={hotspots} activeIndex={activeIndex} />}
 
       {slideIndex === null && (
         <>
@@ -234,7 +270,10 @@ export default function App() {
         </>
       )}
 
-      <div className="credit">{MODEL_CREDIT}</div>
+      <div className={slideIndex !== null ? 'credit credit--deck' : 'credit'}>
+        {MODEL_CREDIT}
+        {compare && <span className="credit__line">{COMPARE_CREDIT}</span>}
+      </div>
 
       {slideIndex !== null && (
         <Presentation

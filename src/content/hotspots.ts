@@ -18,6 +18,9 @@ export type Hotspot = {
 
 // Model credit — CC BY requires attribution.
 export const MODEL_CREDIT = '“Apollo Saturn V Launch Vehicle” by devPilot · CC BY'
+// Shown only while that vehicle is on screen (its slide's `compare`). CC BY 4.0, from
+// the glb's own asset.extras — attribution is required, same as the Saturn V.
+export const COMPARE_CREDIT = '“N1 rocket” by Scilence · CC BY 4.0'
 
 // Model renders in its own space (no <Center>): engines at the base (Y ~0–6), the
 // instrument unit at ~Y 83, and the rebuilt spacecraft + escape tower on top of it
@@ -45,6 +48,14 @@ export const EXPLODE_CAMERA = {
 export const HERO_CAMERA = {
   position: [26, 60, 344] as [number, number, number],
   lookAt: [-54, 50, 0] as [number, number, number],
+}
+
+// Same idea as HERO_CAMERA, but framing two vehicles parked side by side (a slide
+// with `compare` set): pulled back and targeted further left, so the pair sits in the
+// right half of the screen with the deck text clear of it.
+export const COMPARE_CAMERA = {
+  position: [22, 62, 300] as [number, number, number],
+  lookAt: [-58, 56, 0] as [number, number, number],
 }
 
 export const hotspots: Hotspot[] = [

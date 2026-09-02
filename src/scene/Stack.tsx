@@ -9,6 +9,7 @@ import { addMarkings } from './markings'
 import { addWeathering } from './weathering'
 import { applyMetallicLook } from './materials'
 import { addEngineDetail } from './enginedetail'
+import { advanceSpin } from './spin'
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/saturn-v.glb`
 
@@ -55,8 +56,6 @@ function smootherstep(t: number) {
   return t * t * t * (t * (t * 6 - 15) + 10)
 }
 
-const SPIN_SPEED = 0.35 // rad/s — a subtle turn (~18s per revolution) for the hero preview
-
 export function Stack({
   isolateStages,
   exploded = false,
@@ -100,21 +99,8 @@ export function Stack({
       }
     }
 
-    // Hero-preview spin (around the vehicle's central axis, so it turns in place).
-    // When it stops, ease the rotation back to front (0) so markings + callouts align.
-    const g = spinGroup.current
-    if (g) {
-      if (spin) {
-        g.rotation.y += delta * SPIN_SPEED
-      } else if (g.rotation.y !== 0) {
-        // Normalize to (-π, π], then ease toward 0.
-        let cur = g.rotation.y % (Math.PI * 2)
-        if (cur > Math.PI) cur -= Math.PI * 2
-        else if (cur < -Math.PI) cur += Math.PI * 2
-        const next = cur * (1 - Math.min(1, delta * 3))
-        g.rotation.y = Math.abs(next) < 0.002 ? 0 : next
-      }
-    }
+    // Hero-preview spin, around the vehicle's central axis so it turns in place.
+    advanceSpin(spinGroup.current, delta, spin)
   })
 
   return (

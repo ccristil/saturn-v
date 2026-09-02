@@ -203,6 +203,15 @@ canvas {
 }
 
 /* --- Model attribution (CC BY, bottom-left) --- */
+.credit__line {
+  display: block; /* a second credit stacks above/below rather than running long */
+}
+/* While the deck is up its footer owns that corner, so lift the credit clear of the
+   Prev button. Doubled class: `.credit` sets `bottom` further down the file, and at
+   equal specificity it would win. */
+.credit.credit--deck {
+  bottom: 92px;
+}
 .credit {
   z-index: 20;
   position: fixed;
@@ -254,7 +263,9 @@ canvas {
 .deck--hero {
   background-color: transparent;
 }
-.deck__slide--hero {
+.deck__slide.deck__slide--hero {
+  /* doubled class: `.deck__slide { padding: 0 12vw }` is declared further down the
+     file, and at equal specificity it was winning — text ran under the model. */
   padding-right: 46vw;
 }
 /* Handoff into the 3D: the deck dissolves + pushes forward to reveal the dive-in.
@@ -531,7 +542,8 @@ canvas {
   left: 0;
   right: 0;
   height: 3px;
-  border-radius: 2px;
+  /* No border-radius: segments abut, and rounded ends pinch visibly at each join.
+     The outer ends terminate under a dot's punch-out ring, so square reads fine. */
   background: linear-gradient(90deg, var(--c0, #fff), var(--c1, #fff));
   transform-origin: left center;
   animation: tl-draw var(--line-dur, 280ms) linear var(--line-delay, 0ms) both;
@@ -547,8 +559,12 @@ canvas {
   width: var(--dot, 10px);
   height: var(--dot, 10px);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 0 0 6px var(--void); /* punch the axis line out behind the dot */
+  /* Opaque on purpose. The axis line paints behind the dot, so any transparency here
+     (or in the halos below) lets the line show straight through it — the line must
+     read only in the gaps BETWEEN dots. These are the old rgba values pre-blended
+     against --void, so they look identical but nothing shows through. */
+  background: #a0a3ae; /* was rgba(255,255,255,0.6) over --void */
+  box-shadow: 0 0 0 7px var(--void); /* punch the axis line out behind the dot */
   animation: tl-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--dot-delay, 0ms) both;
 }
 /* The two bookends carry the whole argument — 1903 and 1969 — so they get their own
@@ -557,13 +573,13 @@ canvas {
   width: 34px;
   height: 34px;
   background: #fff;
-  box-shadow: 0 0 0 6px var(--void), 0 0 0 12px rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 7px var(--void), 0 0 0 13px #373e59; /* was rgba(255,255,255,0.16) */
 }
 .tl__dot--end {
   width: 42px;
   height: 42px;
   background: var(--accent);
-  box-shadow: 0 0 0 6px var(--void), 0 0 0 13px rgba(12, 129, 207, 0.34);
+  box-shadow: 0 0 0 7px var(--void), 0 0 0 14px #0f3b66; /* was rgba(12,129,207,0.34) */
 }
 .tl__label {
   margin-top: 12px;
