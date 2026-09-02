@@ -110,6 +110,7 @@ Example (real coords are in the model's own space — see **Model & coordinate s
 public/
   models/saturn-v.glb          # devPilot "Apollo Saturn V", CC BY (see Model & coordinate system)
   img/                         # NASA photos, self-hosted
+  audio/                       # sound cues (eagle-noise.mp3 — the "America" bullet)
   fonts/                       # self-hosted woff2 (Plex Sans/Mono, Barlow Condensed)
 src/
   content/hotspots.ts          # ALL copy + camera poses + HOME/EXPLODE/ORBIT_TARGET + MODEL_CREDIT
@@ -129,6 +130,8 @@ src/
   ui/
     Card.tsx                   # the popup panel (DOM overlay)
     Progress.tsx               # 01 · 02 · 03 · 04 · 05 indicator
+    confetti.ts                # dependency-free canvas burst (side cannons) for a slide payoff beat
+    flyby.ts                   # sends an image across the top of the frame (the eagle gif) — CSS-animated
   App.tsx                      # owns activeIndex + exploded; keyboard; explode button; credit; lights + procedural <Environment> (Lightformers, no HDR file)
 ```
 
@@ -249,6 +252,7 @@ _Update this as you go — it's what a fresh session reads first._
 - [x] **Roll pattern — confirmed baked in, no work needed.** The devPilot GLB's texture already carries the black roll pattern (black interstage, S-IC forward-skirt band, S-II bands, engine fairings) and it's photo-accurate. `markings.ts` only adds what's genuinely missing (flag + red "USA" + vertical "UNITED STATES"). Do **not** rebuild the roll pattern from decals — it would fight the baked texture.
 - [x] **Hero-slide reveal** — the last deck slide (`kind: 'hero'` in `slides.ts`) goes transparent (`.deck--hero`) so the *live* 3D model shows as a tiny, subtly-spinning rocket on the right (camera `HERO_CAMERA` — far back + target offset left of the axis; spin via a wrapper group in `Stack.tsx` behind a `spin` prop). On 'next' the pose eases `HERO → HOME` (grow + center), the spin eases back to front so markings/callouts realign, and the deck text dissolves — selling that the tiny model *is* the real one. The old handoff dove to hotspot 1; it now lands on the wide HOME shot (presenter drives hotspots from there). Camera state lives in `App.tsx` (`onHeroSlide` / `heroPreview`).
 - [x] **LeaderFactor rebrand (whole interface)** — retokenized `index.css` to LeaderFactor's brand (see the superseded **Design direction** note): Fustat + Spectral italic via Google Fonts CDN, navy palette, accent-blue, fully-pill buttons. Touches deck (slides/nav/eyebrow/subtitle), HUD buttons, in-scene `Card`, `Callout` (leader-line colors in `Callout.tsx`), `Progress`, credit; scene bg → navy in `App.tsx`. Verified via Playwright across cover/hero/home/dive-in. (Barlow Condensed kept — it's the rocket's painted markings, not UI.)
+- [x] **"Why the Saturn V" slide** — a bulleted slide with presenter-stepped reveals: `bullets: Bullet[]` in `slides.ts`, one revealed per → / click before the deck advances (← walks them back; stepping back into a slide shows it complete). Reveal count lives in `App.tsx` (`revealed`), rendering + cues in `Presentation.tsx`. A bullet carries `sounds: Cue[]` (each `{ src, volume?, delay? }`, `src` relative to `BASE_URL`) and/or `confetti: true`; both fire only on a forward step, and **stepping back or leaving the slide stops them** — the presenter's kill switch, since the anthem runs 16.5s. Autoplay refusals are swallowed. The "America." bullet plays `audio/eagle-noise.mp3` over `audio/the-star-spangled-banner.mp3` (bed at 0.55), fires a hand-rolled canvas confetti burst (`ui/confetti.ts`, no dependency — side cannons firing inward, wide velocity spread so coverage stays even edge-to-edge), and sends the eagle gif across the top via `flyby: 'img/eagle-flying.gif'` (`ui/flyby.ts`, CSS-animated, right → left because the artwork faces left — never mirror it). All three self-remove and are cancelled together on a back-step or when the deck closes. Bullet copy is DRAFT — presenter rewrites.
 - [ ] **Hotspots 2–5** — not built. Add entries to `hotspots.ts` (anchor + camera pose + isolate stage); capture poses with `PoseLogger` (`p`).
 - [ ] Real copy — hotspot 1 is PLACEHOLDER; presenter writes the actual stories.
 - [ ] Remove the temp `PoseLogger` from `App.tsx` before ship.

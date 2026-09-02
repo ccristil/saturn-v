@@ -11,9 +11,11 @@ import { hotspots } from '../content/hotspots'
 // carry it, so the math is correct regardless of layout-effect ordering.
 export function Callouts({
   activeIndex,
+  flip = false,
   onSelect,
 }: {
   activeIndex: number | null
+  flip?: boolean // a card is open — run the leader lines left, away from it
   onSelect: (i: number) => void
 }) {
   const groupRef = useRef<Group>(null)
@@ -57,6 +59,7 @@ export function Callouts({
           target={targets[h.id] ?? h.target}
           tag={h.tag}
           active={i === activeIndex}
+          flip={flip}
           onSelect={() => onSelect(i)}
         />
       ))}

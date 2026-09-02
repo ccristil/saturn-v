@@ -42,6 +42,10 @@ export default function App() {
   // null = not presenting; otherwise index into slides (deck covers the 3D)
   const [slideIndex, setSlideIndex] = useState<number | null>(null)
   const [deckExiting, setDeckExiting] = useState(false) // dissolve deck → 3D handoff
+  // How many bullets of the current slide are revealed. On a bulleted slide the
+  // presenter steps these first; only then does 'next' advance the slide.
+  const [revealed, setRevealed] = useState(0)
+  const bulletCount = (i: number) => slides[i]?.bullets?.length ?? 0
 
   const toggleExplode = () => {
     setExploded((v) => !v)
@@ -52,19 +56,33 @@ export default function App() {
     setExploded(false)
     setActiveIndex(null)
     setSlideIndex(0)
+    setRevealed(0)
   }
   const exitPresentation = () => {
     setDeckExiting(false)
     setSlideIndex(null)
   }
   const prevSlide = () => {
-    if (deckExiting) return
-    if (slideIndex !== null && slideIndex > 0) setSlideIndex(slideIndex - 1)
+    if (deckExiting || slideIndex === null) return
+    if (revealed > 0) {
+      setRevealed(revealed - 1) // walk the reveals back before leaving the slide
+      return
+    }
+    if (slideIndex > 0) {
+      setSlideIndex(slideIndex - 1)
+      setRevealed(bulletCount(slideIndex - 1)) // stepping back into a slide shows it complete
+    }
   }
   const nextSlide = () => {
     if (slideIndex === null || deckExiting) return
-    if (slideIndex < slides.length - 1) setSlideIndex(slideIndex + 1)
-    else {
+    if (revealed < bulletCount(slideIndex)) {
+      setRevealed(revealed + 1)
+      return
+    }
+    if (slideIndex < slides.length - 1) {
+      setSlideIndex(slideIndex + 1)
+      setRevealed(0)
+    } else {
       // Past the last (hero) slide → the reveal: the tiny spinning model grows into the
       // real thing. Switch the camera pose to HOME (grow + center) and stop the spin,
       // then dissolve the deck text over it. Lands on the wide shot; presenter drives
@@ -112,7 +130,7 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exploded, slideIndex, deckExiting])
+  }, [exploded, slideIndex, deckExiting, revealed])
 
   const activeHotspot = activeIndex === null ? null : hotspots[activeIndex]
 
@@ -170,7 +188,11 @@ export default function App() {
           <Stack isolateStages={activeHotspot?.isolate} exploded={exploded} spin={heroPreview} />
           <Ground />
           {!exploded && slideIndex === null && (
-            <Callouts activeIndex={activeIndex} onSelect={setActiveIndex} />
+            <Callouts
+              activeIndex={activeIndex}
+              flip={activeIndex !== null}
+              onSelect={setActiveIndex}
+            />
           )}
         </Suspense>
 
@@ -218,6 +240,7 @@ export default function App() {
         <Presentation
           slides={slides}
           index={slideIndex}
+          revealed={revealed}
           exiting={deckExiting}
           hero={onHeroSlide}
           onNext={nextSlide}

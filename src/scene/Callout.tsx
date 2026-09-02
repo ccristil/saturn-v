@@ -15,10 +15,13 @@ type Props = {
   target: [number, number, number]
   tag: string
   active: boolean
+  // A card is open on the right. Mirror the elbow so the tag runs left, clear of it —
+  // otherwise the tag lands on top of the card's text.
+  flip?: boolean
   onSelect: () => void
 }
 
-export function Callout({ target, tag, active, onSelect }: Props) {
+export function Callout({ target, tag, active, flip = false, onSelect }: Props) {
   const groupRef = useRef<Group>(null)
   const prog = useRef(active ? 1 : 0)
   const [p, setP] = useState(active ? 1 : 0)
@@ -36,10 +39,11 @@ export function Callout({ target, tag, active, onSelect }: Props) {
     }
   })
 
-  // L-shape built in local XY: start at the anchor, run right to the elbow, up to the tag.
+  // L-shape built in local XY: start at the anchor, run out to the elbow, up to the tag.
+  const out = flip ? -OUT : OUT
   const start = new Vector3(0, 0, 0)
-  const elbow = new Vector3(OUT, 0, 0)
-  const tagEnd = new Vector3(OUT, UP, 0)
+  const elbow = new Vector3(out, 0, 0)
+  const tagEnd = new Vector3(out, UP, 0)
   const full = [start, elbow, tagEnd]
 
   // Foil overlay draws in: first half start→elbow, second half elbow→tag.
@@ -51,7 +55,9 @@ export function Callout({ target, tag, active, onSelect }: Props) {
     <group ref={groupRef} position={target}>
       <Line points={full} color={RULE} lineWidth={1} />
       {p > 0.01 && <Line points={drawn} color={FOIL} lineWidth={2} />}
-      <Html position={[OUT, UP, 0]} center>
+      {/* zIndexRange keeps tags under the DOM overlays (card / HUD / progress, z-index 20)
+          — drei's default is ~16.7M, which paints them over the card. */}
+      <Html position={[out, UP, 0]} center zIndexRange={[10, 0]}>
         <button
           className={active ? 'callout-tag' : 'callout-tag callout-tag--inactive'}
           onClick={onSelect}
