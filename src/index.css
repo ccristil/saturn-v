@@ -327,6 +327,25 @@ canvas {
 .deck__slide--cover .deck__title {
   font-size: 108px;
 }
+/* A slide can carry a photo (currently just the cover). It sits absolute on the
+   right so it doesn't disturb the text column's own centered flex flow; the text
+   gets padding-right to clear it, same trick as the hero slide's live model. */
+.deck__slide--has-image {
+  position: relative;
+  padding-right: 38vw;
+}
+.deck__image {
+  position: absolute;
+  top: 50%;
+  right: 10vw;
+  transform: translateY(-50%);
+  width: 26vw;
+  max-width: 440px;
+  aspect-ratio: 1080 / 911;
+  object-fit: cover;
+  border-radius: 24px;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+}
 .deck__subtitle {
   font: italic 300 27px/1.32 var(--font-serif); /* Spectral italic lead — brand accent face */
   color: rgba(255, 255, 255, 0.8);

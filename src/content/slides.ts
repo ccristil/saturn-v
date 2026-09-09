@@ -78,6 +78,7 @@ export type Slide = {
   eyebrow?: string; // small mono label above the title
   title: string;
   subtitle?: string;
+  image?: { src: string; alt: string }; // photo alongside the slide text; `src` is relative to BASE_URL
   body?: string[];
   bullets?: Bullet[]; // revealed one at a time by the presenter
   // A trailing presenter beat that changes nothing on screen: its only job is to
@@ -100,6 +101,10 @@ export const slides: Slide[] = [
     eyebrow: "Apollo · Saturn V",
     title: "Saturn V",
     subtitle: "The craziest thing humans ever built.",
+    image: {
+      src: "img/saturn-v-apollo-4-the-night-before-launch-november-8-1967-v0-9hN-jgxuNa2UWHKDnry8iSaSl65IEKYD0e-TwlTjchI.webp",
+      alt: "Apollo 4, the night before launch — November 8, 1967",
+    },
   },
   {
     id: "sixty-six-years",

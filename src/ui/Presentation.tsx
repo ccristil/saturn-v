@@ -203,11 +203,15 @@ export function Presentation({
           'deck__slide',
           `deck__slide--${slide.kind ?? 'content'}`,
           slide.scale && 'deck__slide--split',
+          slide.image && 'deck__slide--has-image',
         ]
           .filter(Boolean)
           .join(' ')}
         onClick={onNext}
       >
+        {slide.image && (
+          <img className="deck__image" src={import.meta.env.BASE_URL + slide.image.src} alt={slide.image.alt} />
+        )}
         {slide.eyebrow && <div className="deck__eyebrow">{slide.eyebrow}</div>}
         <h1 className="deck__title">{slide.title}</h1>
         {/* A `scale` slide splits below the title: the argument on the left, the
