@@ -113,6 +113,24 @@ export default function App() {
     }
   }
 
+  // An embedded slide (the assembly map) is an iframe: once the presenter clicks into
+  // it, focus is inside that document and this window stops hearing keys. The embedded
+  // page posts its navigation keys back out, and they're replayed here as if they'd
+  // been pressed on the deck — so arrow-key nav survives someone driving the map.
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.source !== 'assembly-map') return
+      if (slideIndex === null || deckExiting) return
+      const key = e.data?.key
+      if (key === 'ArrowRight' || key === ' ') nextSlide()
+      else if (key === 'ArrowLeft') prevSlide()
+      else if (key === 'Escape') exitPresentation()
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slideIndex, deckExiting, revealed])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Presentation deck owns the keyboard while it's up.
@@ -151,11 +169,19 @@ export default function App() {
 
   const activeHotspot = activeIndex === null ? null : hotspots[activeIndex]
 
-  // The last slide (kind 'hero') shows the live model, tiny + spinning, on the right.
+  // The 'hero' slide shows the live model, tiny + spinning, on the right.
   // onHeroSlide keeps the deck transparent through the exit dissolve; heroPreview drives
-  // the small-right camera + spin, and drops on 'next' so the model grows into HOME.
+  // the small-right camera + spin, and drops on the final 'next' so the model grows
+  // into HOME.
+  //
+  // heroPreview deliberately stays on for every slide from the hero slide onward, not
+  // just the hero slide itself: any slide after it is opaque, so the model is parked
+  // out of sight, and holding the pose means the grow-into-HOME reveal still plays on
+  // the real handoff instead of being spent behind an opaque slide.
+  const heroIndex = slides.findIndex((s) => s.kind === 'hero')
   const onHeroSlide = slideIndex !== null && slides[slideIndex]?.kind === 'hero'
-  const heroPreview = onHeroSlide && !deckExiting
+  const heroPreview =
+    slideIndex !== null && heroIndex >= 0 && slideIndex >= heroIndex && !deckExiting
 
   // A slide can park a second vehicle beside the Saturn V, to scale. It's mounted only
   // while that slide is up — the handoff drops it as the deck dissolves, so the wide

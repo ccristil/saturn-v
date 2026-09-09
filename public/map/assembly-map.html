@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Saturn V — Manufacturing &amp; Assembly Map</title>
+
+<!-- OpenLayers 10 (pinned). Swap for an npm import if you'd rather bundle it:
+     `import Map from 'ol/Map'` etc. — every symbol used below hangs off the `ol`
+     global in this dist build, so the rename is mechanical. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.3.1/ol.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fustat:wght@300..800&display=swap" />
+
+<style>
+  /* Palette is deliberately its own block: this file is meant to be lifted out and
+     re-themed. Nothing below reaches for a colour that isn't declared here. */
+  :root {
+    --void: #111a35;
+    --panel: rgba(15, 22, 46, 0.92);
+    --ink: #ffffff;
+    --muted: rgba(255, 255, 255, 0.62);
+    --faint: rgba(255, 255, 255, 0.34);
+    --rule: rgba(255, 255, 255, 0.14);
+
+    /* site categories */
+    --c-manufacturing: #4aa3f0;
+    --c-spacecraft: #c084fc;
+    --c-testing: #fbbf24;
+    --c-assembly: #fb7185;
+
+    /* transport modes — kept outside the category set so a line can never be
+       mistaken for a marker of the same colour */
+    --c-barge: #2dd4bf;
+    --c-air: #e2e8f0;
+
+    --font: 'Fustat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius-pill: 2000px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--void);
+    color: var(--ink);
+    font-family: var(--font);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #map { position: absolute; inset: 0; background: var(--void); }
+  /* The backdrop the map is drawn onto. Markers and routes are vectors built from the
+     inline data below, so if the tile server is unreachable this degrades to a
+     readable diagram on navy rather than to a blank slide.
+     On the viewport, NOT on `canvas`: giving the basemap its own `className` (below)
+     splits the layers onto separate canvases, and an opaque background on each one
+     means the vector canvas paints over the tiles underneath it. */
+  .ol-viewport { background: var(--void); }
+
+  /* The basemap ships neutral grey; nudge it toward the deck's navy and hold it back
+     so the routes stay the brightest thing on screen. Only this layer's canvas is
+     touched — hence `className: 'basemap'` on the layer. */
+  .basemap {
+    filter: sepia(0.3) hue-rotate(175deg) saturate(1.5) brightness(1.0) contrast(1.05);
+    opacity: 0.9;
+  }
+
+  .ol-zoom { top: auto; bottom: 18px; left: 18px; }
+  .ol-zoom button {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    font: 600 17px/1 var(--font);
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    margin: 3px 0;
+    cursor: pointer;
+  }
+  .ol-zoom button:hover, .ol-zoom button:focus { background: #1d2a52; outline: none; }
+  .ol-attribution {
+    background: rgba(10, 16, 36, 0.72) !important;
+    border-radius: var(--radius-pill);
+    padding: 2px 10px !important;
+    font: 400 11px/1.6 var(--font);
+  }
+  .ol-attribution a { color: var(--muted); }
+  .ol-attribution ul { color: var(--muted); text-shadow: none !important; }
+
+  /* --- title --- */
+  .title {
+    position: absolute;
+    top: 22px; left: 24px;
+    z-index: 5;
+    pointer-events: none;
+    max-width: 30rem;
+  }
+  .title__eyebrow {
+    font: 600 12px/1 var(--font);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--c-manufacturing);
+    margin-bottom: 9px;
+  }
+  .title__h {
+    font: 700 34px/1.08 var(--font);
+    letter-spacing: -0.025em;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6);
+  }
+  .title__sub {
+    margin-top: 8px;
+    font: 400 16px/1.45 var(--font);
+    color: var(--muted);
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
+  }
+
+  /* --- legend + toggles --- */
+  .panel {
+    position: absolute;
+    top: 22px; right: 24px;
+    z-index: 5;
+    width: 268px;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 16px;
+    padding: 16px 18px 14px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .panel__h {
+    font: 600 11px/1 var(--font);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 11px;
+  }
+  .panel__h + .panel__h { margin-top: 18px; }
+
+  /* Embedded in a slide deck, the host's own close button owns the top-right corner —
+     drop the panel below it. Standalone, the panel keeps the corner. */
+  .is-embedded .panel { top: 62px; }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    font: 400 14px/1.3 var(--font);
+    cursor: pointer;
+    user-select: none;
+  }
+  .row input { accent-color: var(--c-manufacturing); width: 15px; height: 15px; cursor: pointer; flex: none; }
+  .row__count { margin-left: auto; font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  .dot { width: 13px; height: 13px; border-radius: 50%; flex: none; border: 2px solid rgba(8, 14, 32, 0.85); }
+  .line { width: 22px; height: 0; flex: none; border-top-width: 3px; border-radius: 2px; }
+
+  .panel__note {
+    margin-top: 13px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    font: 400 12px/1.5 var(--font);
+    color: var(--faint);
+  }
+
+  .playbtn {
+    margin-top: 12px;
+    width: 100%;
+    border: 1px solid var(--rule);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--ink);
+    font: 600 13px/1 var(--font);
+    padding: 10px 14px;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: background 0.18s ease;
+  }
+  .playbtn:hover { background: rgba(255, 255, 255, 0.16); }
+  .playbtn[data-playing='1'] { background: var(--c-barge); border-color: var(--c-barge); color: #06201d; }
+
+  /* --- popup --- */
+  .popup {
+    /* `relative`, not `absolute`: OL sizes its overlay container from this element and
+       positions the container so the element's bottom-centre lands on the marker.
+       Take this out of flow and the container collapses to 0×0 — the popup then hangs
+       down-and-right of the point instead of sitting above it. */
+    position: relative;
+    min-width: 244px;
+    max-width: 320px;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 14px 16px 15px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+    display: none;
+  }
+  .popup[data-open='1'] { display: block; }
+  /* the little pointer down to the marker */
+  .popup::after {
+    content: '';
+    position: absolute;
+    left: 50%; bottom: -7px;
+    width: 12px; height: 12px;
+    margin-left: -6px;
+    background: var(--panel);
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    transform: rotate(45deg);
+  }
+  .popup__close {
+    position: absolute;
+    top: 8px; right: 9px;
+    width: 24px; height: 24px;
+    border: 0; border-radius: 50%;
+    background: transparent;
+    color: var(--faint);
+    font: 400 15px/1 var(--font);
+    cursor: pointer;
+  }
+  .popup__close:hover { background: rgba(255, 255, 255, 0.1); color: var(--ink); }
+  .popup__tag {
+    display: inline-block;
+    font: 600 10px/1 var(--font);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 5px 9px;
+    border-radius: var(--radius-pill);
+    margin-bottom: 9px;
+  }
+  .popup__name { font: 700 16px/1.25 var(--font); letter-spacing: -0.01em; padding-right: 18px; }
+  .popup__item { margin-top: 8px; font: 600 14px/1.35 var(--font); color: var(--ink); }
+  .popup__meta { margin-top: 3px; font: 400 13px/1.4 var(--font); color: var(--muted); }
+  .popup__desc { margin-top: 9px; font: 400 13px/1.5 var(--font); color: var(--muted); }
+  .popup__hint { margin-top: 10px; font: 600 11px/1 var(--font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+  .popup__warn { margin-top: 9px; font: 400 12px/1.45 var(--font); color: var(--c-testing); }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="title">
+  <div class="title__eyebrow">Apollo · 1961 – 1969</div>
+  <div class="title__h">Nobody built a Saturn V</div>
+  <div class="title__sub">Every stage was built somewhere else, by someone else, and shipped to Florida to meet the rest of the rocket for the first time.</div>
+</div>
+
+<aside class="panel">
+  <div class="panel__h">Sites</div>
+  <label class="row"><input type="checkbox" id="t-stage" checked><span class="dot" style="background:var(--c-manufacturing)"></span>Stage &amp; engine plants<span class="row__count" id="n-stage"></span></label>
+  <label class="row"><input type="checkbox" id="t-spacecraft" checked><span class="dot" style="background:var(--c-spacecraft)"></span>Spacecraft plants<span class="row__count" id="n-spacecraft"></span></label>
+  <label class="row"><input type="checkbox" id="t-testing" checked><span class="dot" style="background:var(--c-testing)"></span>Test stands<span class="row__count" id="n-testing"></span></label>
+  <label class="row" style="opacity:.6;cursor:default"><input type="checkbox" checked disabled><span class="dot" style="background:var(--c-assembly)"></span>Final assembly (KSC)<span class="row__count">1</span></label>
+
+  <div class="panel__h">Routes</div>
+  <label class="row"><input type="checkbox" id="t-barge" checked><span class="line" style="border-top:3px solid var(--c-barge)"></span>Barge &amp; ship<span class="row__count" id="n-barge"></span></label>
+  <label class="row"><input type="checkbox" id="t-air" checked><span class="line" style="border-top:3px dashed var(--c-air)"></span>Aircraft (Guppy)<span class="row__count" id="n-air"></span></label>
+
+  <button class="playbtn" id="play">▶  Trace every journey</button>
+  <div class="panel__note">Click a site for who built what. Click a route to watch it travel.</div>
+</aside>
+
+<div class="popup" id="popup">
+  <button class="popup__close" id="popup-close" aria-label="Close">✕</button>
+  <div id="popup-body"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ol@10.3.1/dist/ol.js"></script>
+<script>
+/* ===================================================================
+   Saturn V manufacturing & assembly map
+   -------------------------------------------------------------------
+   Self-contained: no build step, no framework, no local assets. Drop it
+   anywhere and open it, or iframe it.
+
+   Everything a reader would want to change lives in the two data blocks
+   below (SITES / ROUTES) and the palette in the stylesheet above. The
+   code below those blocks is generic — it does not know any site or
+   route by name.
+   =================================================================== */
+
+/* -------------------------------------------------------------------
+   DATA
+   Coordinates are refined from the supplied set but are still
+   approximate — they point at the facility, not at a survey mark.
+   Marked (approx) where the historic site is gone or diffuse.
+   ------------------------------------------------------------------- */
+
+var SITES = [
+  {
+    id: 'michoud', short: 'Michoud',
+    name: 'Michoud Assembly Facility', place: 'New Orleans, LA',
+    contractor: 'Boeing', item: 'S-IC first stage',
+    category: 'manufacturing', lon: -89.9236, lat: 29.9975,
+    label: { dx: 0, dy: 24, align: 'center' },
+    desc: 'A WWII plant on the bayou, big enough to lay a 138-ft first stage on its side. Chosen largely because it sat on navigable water — nothing that size leaves by road.'
+  },
+  {
+    id: 'sealbeach', short: 'Seal Beach',
+    name: 'Seal Beach Naval Weapons Station', place: 'Seal Beach, CA',
+    contractor: 'North American Aviation', item: 'S-II second stage',
+    category: 'manufacturing', lon: -118.0700, lat: 33.7530,
+    label: { dx: 15, dy: 0, align: 'left' },
+    desc: 'The hardest stage of the three: a 33-ft hydrogen tank with a common bulkhead, built to a weight budget that kept getting cut underneath the engineers.'
+  },
+  {
+    id: 'huntingtonbeach', short: 'Huntington Beach',
+    name: 'Douglas Space Systems Center', place: 'Huntington Beach, CA',
+    contractor: 'Douglas Aircraft', item: 'S-IVB third stage',
+    category: 'manufacturing', lon: -118.0060, lat: 33.6890,
+    label: { dx: 15, dy: 22, align: 'left' },
+    desc: 'The only stage that had to light twice — once to reach orbit, once more to leave it. Small enough to fly, which is why it went by air and not by sea.'
+  },
+  {
+    id: 'canogapark', short: 'Canoga Park',
+    name: 'Rocketdyne', place: 'Canoga Park, CA',
+    contractor: 'Rocketdyne', item: 'F-1 and J-2 engines',
+    category: 'manufacturing', lon: -118.5975, lat: 34.1975,
+    label: { dx: -15, dy: -4, align: 'right' },
+    desc: 'Every engine on the vehicle — 5 F-1s, 6 J-2s — came out of the San Fernando Valley and shipped to whichever stage was waiting for it.'
+  },
+  {
+    id: 'huntsville', short: 'Huntsville',
+    name: 'Marshall Space Flight Center / IBM', place: 'Huntsville, AL',
+    contractor: 'IBM · NASA Marshall', item: 'Instrument Unit',
+    category: 'manufacturing', lon: -86.6739, lat: 34.6448,
+    desc: 'The three-foot ring between the third stage and the spacecraft that flew the whole vehicle. Marshall designed the rocket here; IBM built its brain a few miles away.'
+  },
+  {
+    id: 'stennis', short: 'Mississippi Test Facility',
+    name: 'Mississippi Test Facility', place: 'Bay St. Louis, MS',
+    contractor: 'NASA', item: 'S-IC / S-II static-fire testing',
+    category: 'testing', lon: -89.6004, lat: 30.3625,
+    label: { dx: -14, dy: -8, align: 'right' },
+    desc: 'Every first and second stage was bolted down and fired here before it was allowed near Florida. Five towns were bought out to make room for the noise. Now Stennis Space Center.'
+  },
+  {
+    id: 'sacto', short: 'SACTO',
+    name: 'Sacramento Test Operations', place: 'near Folsom, CA (approx)',
+    contractor: 'Douglas Aircraft', item: 'S-IVB captive-firing tests',
+    category: 'testing', lon: -121.0900, lat: 38.6300,
+    desc: 'Douglas ran its own third-stage test stands in the hills east of Sacramento, rather than shipping every S-IVB across the country to be fired.'
+  },
+  {
+    id: 'downey', short: 'Downey',
+    name: 'North American Aviation', place: 'Downey, CA',
+    contractor: 'North American Aviation', item: 'Apollo Command / Service Module',
+    category: 'spacecraft', lon: -118.1360, lat: 33.9270,
+    label: { dx: 15, dy: -22, align: 'left' },
+    desc: 'The spacecraft the crew actually lived in — and, after the Apollo 1 fire, the site of the redesign that made it survivable.'
+  },
+  {
+    id: 'bethpage', short: 'Bethpage',
+    name: 'Grumman', place: 'Bethpage, NY',
+    contractor: 'Grumman', item: 'Lunar Module',
+    category: 'spacecraft', lon: -73.4823, lat: 40.7440,
+    desc: 'The only piece of the stack designed never to touch atmosphere — so it was built with no aerodynamic constraint at all, and it looks like it.'
+  },
+  {
+    id: 'ksc', short: 'Kennedy Space Center',
+    name: 'Kennedy Space Center', place: 'Merritt Island, FL',
+    contractor: 'NASA', item: 'Final assembly (VAB) + launch',
+    category: 'assembly', lon: -80.6510, lat: 28.5857,
+    label: { dx: 17, dy: 6, align: 'left' },
+    desc: 'The Vehicle Assembly Building is where the pieces met. Most of the rocket was mated to the rest of itself for the first time here, weeks before it flew.'
+  }
+];
+
+/* `path` is an explicit list of [lon, lat] waypoints, used where the real journey
+   followed water rather than a straight line. Sea routes are traced along the
+   Intracoastal Waterway, the Gulf, the Panama Canal and the Atlantic coast —
+   approximated by eye, but they go where ships can actually go.
+
+   Routes without a `path` are drawn as a gentle arc between endpoints (see
+   arcPath) — appropriate for the flights, misleading for anything on water. */
+var ROUTES = [
+  {
+    from: 'michoud', to: 'stennis', mode: 'barge',
+    note: 'Down the Intracoastal Waterway, through the Rigolets into Mississippi Sound, then up the Pearl River to the test canal.',
+    path: [
+      [-89.9236, 29.9975], [-89.8300, 30.0350], [-89.7400, 30.0700],
+      [-89.6700, 30.1600], [-89.5800, 30.1900], [-89.6100, 30.2600],
+      [-89.6000, 30.3200], [-89.6004, 30.3625]
+    ]
+  },
+  {
+    from: 'stennis', to: 'ksc', mode: 'barge',
+    note: 'Out into the Gulf, along the panhandle, around the Florida Keys and back up the Atlantic side to the KSC turn basin — roughly 1,300 nautical miles to travel 500 in a straight line.',
+    path: [
+      [-89.6004, 30.3625], [-89.5800, 30.2000], [-89.3000, 30.1900],
+      [-88.9000, 30.1800], [-88.3000, 30.1400], [-87.5000, 30.1500],
+      [-86.5000, 29.9000], [-85.5000, 29.6000], [-84.5000, 29.3000],
+      [-83.6000, 28.8000], [-83.1000, 27.8000], [-82.9000, 26.8000],
+      [-82.3000, 25.8000], [-81.6000, 24.9500], [-80.9000, 24.7500],
+      [-80.3000, 25.3000], [-80.0500, 26.2000], [-80.0000, 27.0000],
+      [-80.2000, 27.8000], [-80.5000, 28.3500], [-80.6510, 28.5857]
+    ]
+  },
+  {
+    from: 'sealbeach', to: 'stennis', mode: 'barge',
+    note: 'The S-II was too big for any aircraft. It sailed down the Baja coast, through the Panama Canal and across the Gulf aboard the barge Point Barrow — about five weeks under way.',
+    path: [
+      [-118.0700, 33.7530], [-118.4000, 33.5000], [-117.8000, 31.5000],
+      [-116.5000, 30.0000], [-115.0000, 28.3000], [-113.5000, 26.0000],
+      [-111.0000, 23.5000], [-109.6000, 22.6000], [-106.0000, 20.0000],
+      [-101.0000, 16.5000], [-95.5000, 14.5000], [-90.0000, 12.5000],
+      [-85.0000, 9.5000], [-81.5000, 7.6000], [-79.5500, 8.9000],
+      [-79.9200, 9.3600], [-79.8000, 10.6000], [-81.0000, 13.0000],
+      [-83.0000, 16.5000], [-85.0000, 19.5000], [-86.5000, 21.5000],
+      [-87.5000, 24.0000], [-88.5000, 27.0000], [-89.0000, 29.0000],
+      [-89.2000, 30.1000], [-89.6004, 30.3625]
+    ]
+  },
+  {
+    from: 'huntingtonbeach', to: 'ksc', mode: 'air',
+    note: 'Flown inside the Pregnant Guppy / Super Guppy — a Boeing Stratocruiser cut open and rebuilt around the cargo. Days instead of weeks.'
+  },
+  {
+    from: 'huntsville', to: 'ksc', mode: 'air',
+    note: 'The Instrument Unit was small, light and schedule-critical — the last thing you would put on a barge.'
+  },
+  {
+    from: 'downey', to: 'ksc', mode: 'air',
+    note: 'Command and Service Modules were trucked to a nearby field and flown east by Guppy.'
+  },
+  {
+    from: 'bethpage', to: 'ksc', mode: 'air',
+    note: 'Lunar Modules flew from Long Island to Florida by Guppy, cocooned — the structure was too fragile to trust to a road.'
+  },
+  {
+    from: 'huntingtonbeach', to: 'sacto', mode: 'air', unverified: true,
+    note: 'S-IVB stages went north to Sacramento to be captive-fired before delivery. Mode not confirmed — treat this leg as a placeholder.'
+  }
+];
+
+var VEHICLE_HEIGHT_NOTE = 'Coordinates are approximate. Sea routes are traced by eye along navigable water.';
+
+/* -------------------------------------------------------------------
+   SETUP
+   ------------------------------------------------------------------- */
+
+var css = getComputedStyle(document.documentElement);
+function token(n) { return css.getPropertyValue(n).trim(); }
+
+var CATEGORY = {
+  manufacturing: { color: token('--c-manufacturing'), label: 'Stage & engine plant', toggle: 't-stage' },
+  spacecraft:    { color: token('--c-spacecraft'),    label: 'Spacecraft plant',     toggle: 't-spacecraft' },
+  testing:       { color: token('--c-testing'),       label: 'Test stand',           toggle: 't-testing' },
+  assembly:      { color: token('--c-assembly'),      label: 'Final assembly',       toggle: null }
+};
+
+var MODE = {
+  barge: { color: token('--c-barge'), label: 'Barge / ship', dash: null,     width: 3, ms: 7000, toggle: 't-barge' },
+  air:   { color: token('--c-air'),   label: 'Aircraft',     dash: [2, 9],   width: 2.5, ms: 3200, toggle: 't-air' }
+};
+
+var byId = {};
+SITES.forEach(function (s) { byId[s.id] = s; });
+
+var lonLat = ol.proj.fromLonLat;
+
+/* A shallow great-circle-ish arc for flights: bow the straight line out
+   perpendicular to itself so overlapping routes to KSC stay tellable apart, and so
+   a flight never reads as a road. Purely cosmetic — sea routes never use this. */
+function arcPath(a, b) {
+  var p0 = lonLat([a.lon, a.lat]);
+  var p1 = lonLat([b.lon, b.lat]);
+  var dx = p1[0] - p0[0], dy = p1[1] - p0[1];
+  var len = Math.hypot(dx, dy) || 1;
+  // control point: midpoint pushed to the left of travel by 9% of the span
+  var cx = (p0[0] + p1[0]) / 2 + (-dy / len) * len * 0.09;
+  var cy = (p0[1] + p1[1]) / 2 + (dx / len) * len * 0.09;
+  var out = [];
+  for (var i = 0; i <= 48; i++) {
+    var t = i / 48, u = 1 - t;
+    out.push([
+      u * u * p0[0] + 2 * u * t * cx + t * t * p1[0],
+      u * u * p0[1] + 2 * u * t * cy + t * t * p1[1]
+    ]);
+  }
+  return out;
+}
+
+/* -------------------------------------------------------------------
+   LAYERS
+   ------------------------------------------------------------------- */
+
+// Esri's Dark Gray Canvas: a deliberately minimal basemap — coastlines, state lines,
+// sparse labels — and keyless, so there is no token to expire the morning of a talk.
+// `className` puts it on its own canvas so the tint in CSS can't touch the vectors
+// above it. For plain OSM instead: `source: new ol.source.OSM()` and drop `.basemap`.
+var base = new ol.layer.Tile({
+  // NB both classes: a custom `className` *replaces* OL's default `ol-layer`, and
+  // that's the class carrying the container's positioning — drop it and the tiles
+  // render into an unsized div and never appear.
+  className: 'ol-layer basemap',
+  source: new ol.source.XYZ({
+    url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    attributions: 'Tiles © <a href="https://www.esri.com/">Esri</a> — Esri, HERE, Garmin, © OpenStreetMap contributors',
+    maxZoom: 16,
+    crossOrigin: 'anonymous'
+  })
+});
+
+var routeSource = new ol.source.Vector();
+var siteSource = new ol.source.Vector();
+var trailSource = new ol.source.Vector();   // the drawn-in portion of an animating route
+var travelSource = new ol.source.Vector();  // the moving dot / plane
+
+ROUTES.forEach(function (r, i) {
+  var a = byId[r.from], b = byId[r.to];
+  if (!a || !b) { console.warn('route skipped, unknown site:', r); return; }
+  var coords = r.path ? r.path.map(function (p) { return lonLat(p); }) : arcPath(a, b);
+  var f = new ol.Feature({ geometry: new ol.geom.LineString(coords) });
+  f.setProperties({ kind: 'route', route: r, from: a, to: b, key: r.from + '>' + r.to + ':' + i });
+  routeSource.addFeature(f);
+});
+
+SITES.forEach(function (s) {
+  var f = new ol.Feature({ geometry: new ol.geom.Point(lonLat([s.lon, s.lat])) });
+  f.setProperties({ kind: 'site', site: s });
+  siteSource.addFeature(f);
+});
+
+/* --- styles --- */
+
+function routeStyle(feature) {
+  var r = feature.get('route');
+  var m = MODE[r.mode];
+  var dim = r.unverified ? 0.45 : 1;
+  var styles = [];
+  if (r.mode === 'barge') {
+    // a wide translucent casing under the line — reads as a shipping lane and keeps
+    // the route legible where it crosses the coastline
+    styles.push(new ol.style.Style({
+      stroke: new ol.style.Stroke({ color: rgba(m.color, 0.16 * dim), width: m.width + 7 })
+    }));
+  }
+  styles.push(new ol.style.Style({
+    stroke: new ol.style.Stroke({
+      color: rgba(m.color, 0.9 * dim),
+      width: m.width,
+      lineDash: m.dash,
+      lineCap: 'round',
+      lineJoin: 'round'
+    })
+  }));
+  return styles;
+}
+
+function siteStyle(feature, resolution) {
+  var s = feature.get('site');
+  var c = CATEGORY[s.category];
+  var big = s.category === 'assembly';
+  var r = big ? 11 : 8;
+  // Labels sit above the marker unless the site declares otherwise. The four LA
+  // plants are within a few miles of each other, so at a continental zoom their
+  // labels would stack on top of one another — those carry explicit offsets.
+  var lab = s.label || { dx: 0, dy: -(r + 15), align: 'center' };
+  return [
+    // soft halo so a marker still reads where a route runs under it
+    new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: r + 7,
+        fill: new ol.style.Fill({ color: rgba(c.color, 0.16) })
+      })
+    }),
+    new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: r,
+        fill: new ol.style.Fill({ color: c.color }),
+        stroke: new ol.style.Stroke({ color: 'rgba(8,14,32,0.9)', width: 3 })
+      }),
+      text: new ol.style.Text({
+        text: s.short,
+        font: (big ? '700 15px ' : '600 14px ') + token('--font'),
+        offsetX: lab.dx,
+        offsetY: lab.dy,
+        textAlign: lab.align,
+        textBaseline: 'middle',
+        fill: new ol.style.Fill({ color: '#ffffff' }),
+        stroke: new ol.style.Stroke({ color: 'rgba(8,14,32,0.92)', width: 4 }),
+        overflow: true
+      })
+    })
+  ];
+}
+
+function rgba(hex, a) {
+  var h = hex.replace('#', '');
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  var n = parseInt(h, 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+
+var routeLayer = new ol.layer.Vector({ source: routeSource, style: routeStyle });
+var trailLayer = new ol.layer.Vector({
+  source: trailSource,
+  style: function (f) {
+    var m = MODE[f.get('mode')];
+    return new ol.style.Style({
+      // the trail keeps its mode's dash pattern, scaled up with the width — otherwise
+      // a traced flight arrives looking like a solid shipping lane
+      stroke: new ol.style.Stroke({
+        color: m.color,
+        width: m.width + 2.5,
+        lineDash: m.dash ? m.dash.map(function (n) { return n * 1.6; }) : null,
+        lineCap: 'round',
+        lineJoin: 'round'
+      })
+    });
+  }
+});
+var siteLayer = new ol.layer.Vector({ source: siteSource, style: siteStyle, declutter: false });
+var travelLayer = new ol.layer.Vector({
+  source: travelSource,
+  style: function (f) {
+    var mode = f.get('mode');
+    var m = MODE[mode];
+    var img = mode === 'air'
+      // a triangle turned to face along the flight path
+      ? new ol.style.RegularShape({
+          points: 3, radius: 9, rotation: f.get('rotation') || 0,
+          fill: new ol.style.Fill({ color: m.color }),
+          stroke: new ol.style.Stroke({ color: 'rgba(8,14,32,0.9)', width: 2 })
+        })
+      : new ol.style.Circle({
+          radius: 7,
+          fill: new ol.style.Fill({ color: m.color }),
+          stroke: new ol.style.Stroke({ color: 'rgba(8,14,32,0.9)', width: 3 })
+        });
+    return [
+      new ol.style.Style({ image: new ol.style.Circle({ radius: 16, fill: new ol.style.Fill({ color: rgba(m.color, 0.2) }) }) }),
+      new ol.style.Style({ image: img })
+    ];
+  }
+});
+
+/* -------------------------------------------------------------------
+   MAP
+   ------------------------------------------------------------------- */
+
+var popupEl = document.getElementById('popup');
+var popupBody = document.getElementById('popup-body');
+var overlay = new ol.Overlay({
+  element: popupEl,
+  positioning: 'bottom-center',
+  offset: [0, -22],
+  autoPan: { animation: { duration: 260 }, margin: 28 }
+});
+
+var map = new ol.Map({
+  target: 'map',
+  layers: [base, routeLayer, trailLayer, travelLayer, siteLayer],
+  overlays: [overlay],
+  controls: ol.control.defaults.defaults({ rotate: false, attributionOptions: { collapsible: false } }),
+  view: new ol.View({ center: lonLat([-96, 36]), zoom: 4, minZoom: 3, maxZoom: 12 })
+});
+
+// California to New York, comfortably, with room for the Panama leg to hint offscreen.
+var US_EXTENT = ol.extent.boundingExtent([lonLat([-126, 23.5]), lonLat([-65, 48.5])]);
+// The panel floats over the right edge and the title over the top-left; the padding
+// reserves those bands so nothing important lands underneath them.
+var FIT_PADDING = [110, 310, 80, 60];
+
+function fitUS(duration) {
+  map.getView().fit(US_EXTENT, { padding: FIT_PADDING, duration: duration || 0 });
+}
+
+// Widen the home view just far enough to hold `extent` too, and no further. Used
+// when a route runs off the continent — the Seal Beach ship goes to Panama — so the
+// detour comes into frame without the US ever leaving it.
+function fitIncluding(extent, duration) {
+  var e = US_EXTENT.slice();
+  ol.extent.extend(e, extent);
+  map.getView().fit(e, { padding: FIT_PADDING, duration: duration == null ? 700 : duration });
+}
+
+fitUS(0);
+
+// Embedded pages get resized by their host — a deck going fullscreen mid-talk, say.
+// OL only re-measures on a window resize, which an iframe doesn't always see, so watch
+// the container itself and keep the home framing rather than a stale corner of it.
+if (window.parent !== window) document.body.classList.add('is-embedded');
+if (window.ResizeObserver) {
+  var settle;
+  new ResizeObserver(function () {
+    map.updateSize();
+    clearTimeout(settle);
+    settle = setTimeout(function () { fitUS(0); }, 120);
+  }).observe(document.getElementById('map'));
+}
+
+/* -------------------------------------------------------------------
+   POPUP
+   ------------------------------------------------------------------- */
+
+function closePopup() {
+  popupEl.dataset.open = '0';
+  overlay.setPosition(undefined);
+}
+document.getElementById('popup-close').onclick = function (e) { e.stopPropagation(); closePopup(); };
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+  });
+}
+
+function openSitePopup(site, coord) {
+  var c = CATEGORY[site.category];
+  popupBody.innerHTML =
+    '<span class="popup__tag" style="background:' + rgba(c.color, 0.18) + ';color:' + c.color + '">' + esc(c.label) + '</span>' +
+    '<div class="popup__name">' + esc(site.name) + '</div>' +
+    '<div class="popup__meta">' + esc(site.place) + '</div>' +
+    '<div class="popup__item">' + esc(site.item) + '</div>' +
+    '<div class="popup__meta">' + esc(site.contractor) + '</div>' +
+    '<div class="popup__desc">' + esc(site.desc) + '</div>';
+  popupEl.dataset.open = '1';
+  overlay.setPosition(coord);
+}
+
+function openRoutePopup(feature, coord) {
+  var r = feature.get('route');
+  var m = MODE[r.mode];
+  popupBody.innerHTML =
+    '<span class="popup__tag" style="background:' + rgba(m.color, 0.18) + ';color:' + m.color + '">' + esc(m.label) + '</span>' +
+    '<div class="popup__name">' + esc(feature.get('from').short) + ' → ' + esc(feature.get('to').short) + '</div>' +
+    '<div class="popup__desc">' + esc(r.note) + '</div>' +
+    (r.unverified ? '<div class="popup__warn">⚠ Unverified leg — confirm before presenting.</div>' : '') +
+    '<div class="popup__hint">Tracing…</div>';
+  popupEl.dataset.open = '1';
+  overlay.setPosition(coord);
+}
+
+/* -------------------------------------------------------------------
+   JOURNEY ANIMATION
+   A clicked route draws itself in, with a marker at the head. Several can run at
+   once (the "trace every journey" button), so state is per-run, not global.
+   ------------------------------------------------------------------- */
+
+var runs = {}; // key → run
+
+function measure(coords) {
+  var segs = [], total = 0;
+  for (var i = 1; i < coords.length; i++) {
+    var d = Math.hypot(coords[i][0] - coords[i - 1][0], coords[i][1] - coords[i - 1][1]);
+    segs.push(d); total += d;
+  }
+  return { segs: segs, total: total };
+}
+
+// Walk `f` (0–1) along the path; returns the head point, the path up to it, and the
+// heading there — everything the trail and the moving marker need.
+function sliceAt(coords, m, f) {
+  var want = m.total * f, acc = 0;
+  for (var i = 0; i < m.segs.length; i++) {
+    if (acc + m.segs[i] >= want) {
+      var t = m.segs[i] ? (want - acc) / m.segs[i] : 0;
+      var a = coords[i], b = coords[i + 1];
+      var head = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      return { head: head, upto: coords.slice(0, i + 1).concat([head]), heading: Math.atan2(b[1] - a[1], b[0] - a[0]) };
+    }
+    acc += m.segs[i];
+  }
+  var last = coords[coords.length - 1];
+  return { head: last, upto: coords.slice(), heading: 0 };
+}
+
+function stopRun(key) {
+  var run = runs[key];
+  if (!run) return;
+  cancelAnimationFrame(run.raf);
+  trailSource.removeFeature(run.trail);
+  travelSource.removeFeature(run.dot);
+  delete runs[key];
+  syncPlayButton();
+}
+
+function stopAllRuns() {
+  Object.keys(runs).forEach(stopRun);
+}
+
+function traceRoute(feature) {
+  var key = feature.get('key');
+  if (runs[key]) stopRun(key);
+
+  var r = feature.get('route');
+  var m = MODE[r.mode];
+  var coords = feature.getGeometry().getCoordinates();
+  var metric = measure(coords);
+
+  var trail = new ol.Feature({ geometry: new ol.geom.LineString([coords[0], coords[0]]) });
+  trail.set('mode', r.mode);
+  trailSource.addFeature(trail);
+
+  var dot = new ol.Feature({ geometry: new ol.geom.Point(coords[0]) });
+  dot.set('mode', r.mode);
+  travelSource.addFeature(dot);
+
+  var start = performance.now();
+  var run = { trail: trail, dot: dot, raf: 0 };
+  runs[key] = run;
+
+  function frame(now) {
+    var t = Math.min(1, (now - start) / m.ms);
+    // ease in and out — a barge does not leave the dock at cruising speed
+    var e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    var at = sliceAt(coords, metric, e);
+    trail.getGeometry().setCoordinates(at.upto);
+    dot.getGeometry().setCoordinates(at.head);
+    dot.set('rotation', Math.PI / 2 - at.heading);
+    if (t < 1) {
+      run.raf = requestAnimationFrame(frame);
+    } else {
+      // hold the completed trail for a beat, then clear it
+      setTimeout(function () { stopRun(key); }, 900);
+    }
+  }
+  run.raf = requestAnimationFrame(frame);
+  syncPlayButton();
+}
+
+/* -------------------------------------------------------------------
+   INTERACTION
+   ------------------------------------------------------------------- */
+
+// Sites first: where a marker sits on top of a route, the marker wins.
+function pick(pixel) {
+  var site = null, route = null;
+  map.forEachFeatureAtPixel(pixel, function (f, layer) {
+    if (layer === siteLayer && !site) site = f;
+    else if (layer === routeLayer && !route) route = f;
+  }, { hitTolerance: 8 });
+  return site || route;
+}
+
+map.on('click', function (evt) {
+  var f = pick(evt.pixel);
+  if (!f) { closePopup(); return; }
+  if (f.get('kind') === 'site') {
+    openSitePopup(f.get('site'), f.getGeometry().getCoordinates());
+  } else {
+    openRoutePopup(f, evt.coordinate);
+    fitIncluding(f.getGeometry().getExtent());
+    traceRoute(f);
+  }
+});
+
+map.on('pointermove', function (evt) {
+  if (evt.dragging) return;
+  map.getTargetElement().style.cursor = pick(evt.pixel) ? 'pointer' : '';
+});
+
+/* --- toggles --- */
+
+function visibleRoutes() {
+  return routeSource.getFeatures().filter(function (f) {
+    return document.getElementById(MODE[f.get('route').mode].toggle).checked;
+  });
+}
+
+function applyToggles() {
+  // Layers stay mounted; individual features are shown or hidden by style, so
+  // toggling never rebuilds a source or disturbs an animation in flight.
+  siteLayer.setStyle(function (f, res) {
+    var s = f.get('site');
+    var t = CATEGORY[s.category].toggle;
+    if (t && !document.getElementById(t).checked) return null;
+    return siteStyle(f, res);
+  });
+  routeLayer.setStyle(function (f) {
+    var r = f.get('route');
+    if (!document.getElementById(MODE[r.mode].toggle).checked) { stopRun(f.get('key')); return null; }
+    return routeStyle(f);
+  });
+}
+
+['t-stage', 't-spacecraft', 't-testing', 't-barge', 't-air'].forEach(function (id) {
+  document.getElementById(id).addEventListener('change', function () { closePopup(); applyToggles(); });
+});
+
+// counts in the legend, derived so they can't drift from the data
+function count(pred, list) { return list.filter(pred).length; }
+document.getElementById('n-stage').textContent = count(function (s) { return s.category === 'manufacturing'; }, SITES);
+document.getElementById('n-spacecraft').textContent = count(function (s) { return s.category === 'spacecraft'; }, SITES);
+document.getElementById('n-testing').textContent = count(function (s) { return s.category === 'testing'; }, SITES);
+document.getElementById('n-barge').textContent = count(function (r) { return r.mode === 'barge'; }, ROUTES);
+document.getElementById('n-air').textContent = count(function (r) { return r.mode === 'air'; }, ROUTES);
+
+applyToggles();
+
+/* --- play all --- */
+
+var playBtn = document.getElementById('play');
+function syncPlayButton() {
+  var on = Object.keys(runs).length > 0;
+  playBtn.dataset.playing = on ? '1' : '0';
+  playBtn.textContent = on ? '■  Stop' : '▶  Trace every journey';
+}
+playBtn.onclick = function () {
+  if (Object.keys(runs).length) { stopAllRuns(); fitUS(600); return; }
+  closePopup();
+  var shown = visibleRoutes();
+  if (!shown.length) return;
+  var all = ol.extent.createEmpty();
+  shown.forEach(function (f) { ol.extent.extend(all, f.getGeometry().getExtent()); });
+  fitIncluding(all);
+  shown.forEach(traceRoute);
+};
+syncPlayButton();
+
+/* -------------------------------------------------------------------
+   EMBEDDING
+   When this page is iframed into a slide deck, the deck owns the keyboard — but
+   once someone clicks the map, focus is inside this document and the parent stops
+   hearing keys. Forward the deck's navigation keys back out so arrow-key nav
+   never dies mid-talk. Standalone, `parent === window` and this does nothing.
+   ------------------------------------------------------------------- */
+window.addEventListener('keydown', function (e) {
+  if (e.key === 'r' || e.key === 'R') { closePopup(); stopAllRuns(); fitUS(500); return; }
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Escape' && e.key !== ' ') return;
+  if (e.key === 'Escape' && popupEl.dataset.open === '1') { closePopup(); return; }
+  if (window.parent === window) return;
+  e.preventDefault();
+  window.parent.postMessage({ source: 'assembly-map', key: e.key }, '*');
+});
+
+/* Copy override. Standalone, the headings above are what you get; embedded, the deck
+   passes its own title/subtitle/eyebrow on the query string so the slide's words stay
+   in the deck's content file with every other slide's. Text only — assigned through
+   textContent, never innerHTML. */
+(function () {
+  var q = new URLSearchParams(location.search);
+  [['eyebrow', '.title__eyebrow'], ['title', '.title__h'], ['subtitle', '.title__sub']]
+    .forEach(function (pair) {
+      var v = q.get(pair[0]);
+      if (v === null) return;
+      var el = document.querySelector(pair[1]);
+      if (!el) return;
+      if (v === '') el.style.display = 'none';
+      else el.textContent = v;
+    });
+})();
+
+console.info('Saturn V assembly map —', SITES.length, 'sites,', ROUTES.length, 'routes.', VEHICLE_HEIGHT_NOTE);
+</script>
+</body>
+</html>

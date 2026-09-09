@@ -197,6 +197,23 @@ export function Presentation({
   const kickerShown = stepped && revealed >= beats.kickerBeat
   const scaleShown = stepped && revealed >= beats.scaleBeat
 
+  // A `map` slide is a full-bleed embedded page — it carries its own headings (fed
+  // from this slide's eyebrow/title/subtitle on the query string), so the deck's own
+  // text block is suppressed rather than drawn twice. The iframe swallows its own
+  // clicks, so click-to-advance is off inside it; the footer and → still advance, and
+  // the embedded page forwards arrow keys back out (see App) so keyboard nav survives
+  // the presenter clicking into the map.
+  const mapSrc = slide.map
+    ? import.meta.env.BASE_URL +
+      slide.map.src +
+      '?' +
+      new URLSearchParams({
+        eyebrow: slide.eyebrow ?? '',
+        title: slide.title,
+        subtitle: slide.subtitle ?? '',
+      }).toString()
+    : null
+
   return (
     <div
       className={['deck', hero && 'deck--hero', exiting && 'deck--exiting']
@@ -214,11 +231,12 @@ export function Presentation({
           `deck__slide--${slide.kind ?? 'content'}`,
           slide.scale && 'deck__slide--split',
           slide.image && 'deck__slide--has-image',
+          mapSrc && 'deck__slide--map',
         ]
           .filter(Boolean)
           .join(' ')}
         style={slide.image && imgW ? ({ '--img-w': `${imgW}px` } as CSSProperties) : undefined}
-        onClick={onNext}
+        onClick={mapSrc ? undefined : onNext}
       >
         {slide.image && (
           <figure className="deck__imagewrap">
@@ -234,12 +252,15 @@ export function Presentation({
             )}
           </figure>
         )}
-        {slide.eyebrow && <div className="deck__eyebrow">{slide.eyebrow}</div>}
-        <h1 className="deck__title">{slide.title}</h1>
+        {mapSrc && (
+          <iframe className="deck__map" src={mapSrc} title={slide.title} />
+        )}
+        {!mapSrc && slide.eyebrow && <div className="deck__eyebrow">{slide.eyebrow}</div>}
+        {!mapSrc && <h1 className="deck__title">{slide.title}</h1>}
         {/* A `scale` slide splits below the title: the argument on the left, the
             to-scale drawing in the right-hand column. Without one, the same content
             runs full width. */}
-        {slide.scale ? (
+        {mapSrc ? null : slide.scale ? (
           <div className="deck__split">
             <div className="deck__splitmain">
           {slide.subtitle && <p className="deck__subtitle">{slide.subtitle}</p>}

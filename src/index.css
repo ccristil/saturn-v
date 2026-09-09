@@ -930,3 +930,22 @@ canvas {
   opacity: 1;
   transform: none;
 }
+
+/* A slide can be a full-bleed embedded page (the manufacturing map). It fills the
+   slide area between the deck's header space and its footer, and carries its own
+   headings — fed this slide's eyebrow/title/subtitle on the query string — so the
+   deck's own text block is suppressed rather than drawn twice.
+   `cursor: default` because click-to-advance is off here: the iframe swallows its own
+   clicks, and a pointer cursor would promise something that doesn't happen. */
+.deck__slide--map {
+  padding: 0;
+  gap: 0;
+  cursor: default;
+}
+.deck__map {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  display: block;
+  background: var(--void);
+}

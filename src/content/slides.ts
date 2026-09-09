@@ -64,6 +64,14 @@ export type Scale = {
   vehicles: ScaleVehicle[]; // tallest first
 };
 
+// A full-bleed interactive page embedded as the slide. `src` is relative to BASE_URL.
+// The page is self-contained and works opened on its own; the slide's own eyebrow /
+// title / subtitle are handed to it on the query string, so this slide's copy still
+// lives here with every other slide's rather than inside the embedded file.
+export type EmbeddedMap = {
+  src: string;
+};
+
 // A second vehicle parked beside the Saturn V on this slide, scaled by its real
 // height so the size comparison is honest. `model` is relative to BASE_URL.
 export type Compare = {
@@ -89,6 +97,7 @@ export type Slide = {
   race?: Race; // two elapsed-time bars on a shared scale, revealed one per step
   scale?: Scale; // to-scale silhouettes in a right-hand column beside the main content
   compare?: Compare; // a second vehicle beside the Saturn V, to scale
+  map?: EmbeddedMap; // full-bleed embedded page; suppresses this slide's own text
   timeline?: TimelineStop[]; // horizontal milestone axis; dots grow left → right
   span?: string; // label for the bracket drawn under the whole timeline
   kicker?: string; // one payoff line under the timeline
@@ -214,6 +223,17 @@ export const slides: Slide[] = [
         text: "The N1 rocket was the Soviet Union's answer to the Saturn V.",
       },
     ],
+  },
+  {
+    id: "where-it-was-built",
+    eyebrow: "Michoud · Seal Beach · Huntsville · Downey · Bethpage",
+    title: "Nobody built a Saturn V",
+    // DRAFT COPY — presenter rewrites. The map's data (sites, contractors, routes)
+    // lives in public/map/assembly-map.html, which is a standalone page in its own
+    // right; only these three lines are passed in from here.
+    subtitle:
+      "Every stage was built somewhere else, by someone else, and shipped to Florida to meet the rest of the rocket for the first time.",
+    map: { src: "map/assembly-map.html" },
   },
 ];
 
