@@ -165,6 +165,96 @@ canvas {
   color: var(--ink);
 }
 
+/* --- Card photo cycler (hotspot.images) — click-only controls; arrow keys stay
+   reserved for hotspot nav, so this never competes with the presenter's ←/→. --- */
+.card__gallery {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.card__gallery-stage {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.25);
+}
+.card__gallery-item {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  transition: opacity 320ms ease;
+  pointer-events: none;
+}
+.card__gallery-item.is-shown {
+  opacity: 1;
+}
+.card__gallery-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.card__gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(17, 26, 53, 0.55);
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition), border-color var(--transition);
+}
+.card__gallery-nav:hover {
+  background: rgba(17, 26, 53, 0.8);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+.card__gallery-nav--prev {
+  left: 10px;
+}
+.card__gallery-nav--next {
+  right: 10px;
+}
+.card__gallery-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.card__gallery-credit {
+  font: 500 13px/1 var(--font-sans);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.card__gallery-dots {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+.card__gallery-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  border: none;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+}
+.card__gallery-dot.is-active {
+  background: var(--accent);
+  transform: scale(1.35);
+}
+
 /* --- HUD buttons (top-left stack) — LeaderFactor light-glass pills on dark --- */
 .hud-btn {
   z-index: 20;
