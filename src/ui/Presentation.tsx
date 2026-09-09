@@ -139,6 +139,13 @@ export function Presentation({
   const timing = slide.timeline ? timelineTiming(slide.timeline.length) : null
   const tailDelay = timing ? timing.end + 150 : 0
 
+  // Race bars are drawn as a fraction of the slide's longest lane, so every lane is
+  // measured against the same scale. On a race slide the kicker is the final
+  // presenter beat (one step past the last lane) rather than a timed tail.
+  const raceMax = slide.race ? Math.max(...slide.race.lanes.map((l) => l.days)) : 1
+  const kickerStepped = !!slide.race
+  const kickerShown = kickerStepped && revealed > slide.race!.lanes.length
+
   return (
     <div
       className={['deck', hero && 'deck--hero', exiting && 'deck--exiting']
@@ -174,6 +181,46 @@ export function Presentation({
               </li>
             ))}
           </ul>
+        )}
+
+        {slide.race && (
+          <div className="race">
+            {slide.race.lanes.map((lane, i) => (
+              // One lane per presenter step. Bars share one scale — the longest lane on
+              // the slide is full width — so two near-identical spans read as
+              // near-identical bars rather than as a coincidence of layout. Hidden
+              // lanes keep their space (opacity only), so nothing reflows mid-sentence.
+              <div
+                className={[
+                  'race__lane',
+                  i < revealed && 'is-shown',
+                  lane.accent && 'race__lane--accent',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                key={lane.name}
+                style={{ '--w': `${(lane.days / raceMax) * 100}%` } as CSSProperties}
+              >
+                <div className="race__head">
+                  <span className="race__name">{lane.name}</span>
+                  <span className="race__days">{lane.days.toLocaleString()} days</span>
+                </div>
+                <div className="race__track">
+                  <div className="race__bar" />
+                </div>
+                <div className="race__ends">
+                  <div className="race__end">
+                    <div className="race__date">{lane.from.date}</div>
+                    <div className="race__note">{lane.from.note}</div>
+                  </div>
+                  <div className="race__end race__end--to">
+                    <div className="race__date">{lane.to.date}</div>
+                    <div className="race__note">{lane.to.note}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {slide.timeline && (
@@ -227,7 +274,16 @@ export function Presentation({
         )}
 
         {slide.kicker && (
-          <p className="deck__kicker" style={{ animationDelay: `${tailDelay + 200}ms` }}>
+          <p
+            className={[
+              'deck__kicker',
+              kickerStepped && 'deck__kicker--step',
+              kickerShown && 'is-shown',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            style={kickerStepped ? undefined : { animationDelay: `${tailDelay + 200}ms` }}
+          >
             {slide.kicker}
           </p>
         )}

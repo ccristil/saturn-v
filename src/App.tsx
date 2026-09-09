@@ -51,10 +51,18 @@ export default function App() {
   // null = not presenting; otherwise index into slides (deck covers the 3D)
   const [slideIndex, setSlideIndex] = useState<number | null>(null)
   const [deckExiting, setDeckExiting] = useState(false) // dissolve deck → 3D handoff
-  // How many bullets of the current slide are revealed. On a bulleted slide the
-  // presenter steps these first; only then does 'next' advance the slide.
+  // How many reveal beats of the current slide the presenter has stepped through. On
+  // a slide that has them, 'next' walks these first; only then does it advance the
+  // slide. Bullets are one beat each; a race is one beat per lane plus a final beat
+  // for the kicker, so the payoff line lands on its own step.
   const [revealed, setRevealed] = useState(0)
-  const bulletCount = (i: number) => slides[i]?.bullets?.length ?? 0
+  const stepCount = (i: number) => {
+    const s = slides[i]
+    if (!s) return 0
+    if (s.bullets) return s.bullets.length
+    if (s.race) return s.race.lanes.length + (s.kicker ? 1 : 0)
+    return 0
+  }
 
   // Warm every slide's comparison model at startup: mounting one cold, mid-talk,
   // would suspend and blank the scene for as long as the download takes.
@@ -85,12 +93,12 @@ export default function App() {
     }
     if (slideIndex > 0) {
       setSlideIndex(slideIndex - 1)
-      setRevealed(bulletCount(slideIndex - 1)) // stepping back into a slide shows it complete
+      setRevealed(stepCount(slideIndex - 1)) // stepping back into a slide shows it complete
     }
   }
   const nextSlide = () => {
     if (slideIndex === null || deckExiting) return
-    if (revealed < bulletCount(slideIndex)) {
+    if (revealed < stepCount(slideIndex)) {
       setRevealed(revealed + 1)
       return
     }

@@ -609,6 +609,116 @@ canvas {
   color: var(--muted);
   animation: tl-rise 560ms ease both;
 }
+/* --- Deck race (slides.ts `race`) -------------------------------------------
+   Two elapsed spans drawn as bars on ONE shared scale (the slide's longest lane is
+   full width), so "they took the same amount of time" reads as a shape before it
+   reads as a sentence. One lane per presenter step: opacity gates the lane, scaleX
+   draws the bar, and both reverse on ← — transitions, not animations, same as
+   .deck__bullet. The lane's width lives in --w (set inline from `days`), and the
+   head + endpoint rows are pinned to it so the closing date sits over the bar's
+   real end rather than the edge of the scale. */
+.race {
+  display: flex;
+  flex-direction: column;
+  gap: 38px;
+  margin-top: 12px;
+  max-width: 1020px;
+}
+.race__lane {
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+.race__lane.is-shown {
+  opacity: 1;
+}
+.race__head {
+  width: var(--w, 100%);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 10px;
+}
+.race__name {
+  font: 600 14px/1 var(--font-sans);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.race__lane--accent .race__name {
+  color: var(--accent);
+}
+.race__days {
+  font: 700 34px/1 var(--font-sans);
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+/* The track is the full shared scale; ::before is that scale drawn faintly, so a
+   short bar reads as short rather than just as a bar. */
+.race__track {
+  position: relative;
+  height: 12px;
+  display: flex;
+  align-items: center;
+}
+.race__track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.race__bar {
+  position: relative;
+  width: var(--w, 100%);
+  height: 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.75);
+  transform: scaleX(0);
+  transform-origin: left center;
+  /* the radius only distorts mid-draw; at rest (scaleX(1)) the caps are true round */
+  transition: transform 900ms cubic-bezier(0.22, 0.61, 0.36, 1) 100ms;
+}
+.race__lane.is-shown .race__bar {
+  transform: scaleX(1);
+}
+.race__lane--accent .race__bar {
+  background: var(--accent);
+}
+.race__ends {
+  width: var(--w, 100%);
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 14px;
+}
+.race__end--to {
+  text-align: right;
+}
+.race__date {
+  font: 600 18px/1.2 var(--font-sans);
+  color: var(--ink);
+}
+.race__note {
+  margin-top: 5px;
+  font: 400 15px/1.4 var(--font-sans);
+  color: rgba(255, 255, 255, 0.62);
+}
+/* The number and the endpoints land after the bar has finished drawing, so the eye
+   follows the bar out and then reads what it cost. Base delay is 0, so stepping
+   back with ← clears them immediately. */
+.race__days,
+.race__ends {
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+.race__lane.is-shown .race__days,
+.race__lane.is-shown .race__ends {
+  opacity: 1;
+  transition-delay: 780ms;
+}
+
 .deck__kicker {
   margin-top: 4px;
   text-align: center;
@@ -616,4 +726,20 @@ canvas {
   letter-spacing: -0.01em;
   color: var(--ink);
   animation: tl-rise 560ms ease both;
+}
+/* On a race slide the kicker is the last presenter step, not a timed tail — so it
+   waits on `.is-shown` and reverses on ←, like the lanes above it. */
+.deck__kicker--step {
+  animation: none;
+  /* left-aligned, unlike the timeline kicker: it sits under left-aligned bars */
+  text-align: left;
+  max-width: 1020px;
+  margin: 10px 0 0;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 380ms ease, transform 380ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.deck__kicker--step.is-shown {
+  opacity: 1;
+  transform: none;
 }

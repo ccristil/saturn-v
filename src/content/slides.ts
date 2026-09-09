@@ -26,6 +26,24 @@ export type Bullet = {
   flyby?: string; // image path (relative to BASE_URL) sent across the top of the screen
 };
 
+// Two programs' elapsed times drawn as bars on ONE shared day-scale, so "they took the
+// same amount of time" is something the room sees before the presenter says it. Lanes
+// are revealed one per presenter step (the same → / ← mechanism `bullets` uses), so
+// the second bar lands against the first; the `kicker`, if there is one, gets the
+// final beat. `days` is the elapsed count — it drives the bar length, so the bars
+// stay honest against each other and nothing is eyeballed.
+export type RaceLane = {
+  name: string;
+  from: { date: string; note: string };
+  to: { date: string; note: string };
+  days: number;
+  accent?: boolean; // draw in accent blue — the lane the slide is arguing about
+};
+
+export type Race = {
+  lanes: RaceLane[];
+};
+
 // A second vehicle parked beside the Saturn V on this slide, scaled by its real
 // height so the size comparison is honest. `model` is relative to BASE_URL.
 export type Compare = {
@@ -42,6 +60,7 @@ export type Slide = {
   subtitle?: string;
   body?: string[];
   bullets?: Bullet[]; // revealed one at a time by the presenter
+  race?: Race; // two elapsed-time bars on a shared scale, revealed one per step
   compare?: Compare; // a second vehicle beside the Saturn V, to scale
   timeline?: TimelineStop[]; // horizontal milestone axis; dots grow left → right
   span?: string; // label for the bracket drawn under the whole timeline
@@ -73,6 +92,34 @@ export const slides: Slide[] = [
     ],
     span: "One human lifetime",
     kicker: "120 feet of powered flight → 240,000 miles, and back again.",
+  },
+  {
+    id: "same-six-and-a-half-years",
+    eyebrow: "1961 \u2192 1967  \u00b7  2002 \u2192 2008",
+    title: "The same six and a half years",
+    // DRAFT COPY \u2014 the subtitle + kicker are the presenter's to rewrite. The dates and
+    // day counts are load-bearing, though: the bars are drawn from `days`.
+    subtitle:
+      "SpaceX had CAD, laptops, simulation, Slack, and fifty years of hindsight. It still took thirty-one days longer.",
+    race: {
+      lanes: [
+        {
+          name: "NASA",
+          from: { date: "May 25, 1961", note: "JFK commits to the Moon" },
+          to: { date: "Nov 9, 1967", note: "Apollo 4 \u2014 first Saturn V flies" },
+          days: 2359,
+          accent: true,
+        },
+        {
+          name: "SpaceX",
+          from: { date: "Mar 14, 2002", note: "Incorporated" },
+          to: { date: "Sep 28, 2008", note: "RatSat reaches orbit" },
+          days: 2390,
+        },
+      ],
+    },
+    kicker:
+      "And NASA's was the first Saturn V ever flown \u2014 all-up, first try. RatSat was Falcon 1's fourth attempt; the first three fell in the ocean.",
   },
   {
     id: "why-saturn-v",
