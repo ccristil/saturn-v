@@ -283,6 +283,29 @@ export const slides: Slide[] = [
       },
     ],
   },
+  {
+    id: "n1-close-up",
+    // DRAFT COPY — presenter rewrites. The photos and their captions are factual.
+    eyebrow: "N1 · 1969",
+    title: "What that actually looked like",
+    subtitle: "Thirty engines, one pad, one very bad night.",
+    gallery: {
+      images: [
+        {
+          src: "img/n1-engines.jpg",
+          alt: "Overhead view of the N1 first stage's ring of 30 NK-15 engines before rollout",
+          caption:
+            "Thirty NK-15 engines on the first stage — a declassified Soviet photo, kept secret for decades.",
+        },
+        {
+          src: "img/n1-explosion-july-3-1969.jpg",
+          alt: "The N1 rocket exploding shortly after liftoff on July 3, 1969",
+          caption:
+            "July 3, 1969 — two weeks before Apollo 11. Still the largest non-nuclear explosion in history.",
+        },
+      ],
+    },
+  },
 ];
 
 // The presenter-stepped beats on a slide, in the order they land. A bulleted slide
