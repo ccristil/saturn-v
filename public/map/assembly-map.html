@@ -886,6 +886,19 @@ function legDuration(feature) {
   return Math.max(700, m.ms * share);
 }
 
+// How long a journey takes at its natural pace: every leg plus the beat at each stop.
+function journeyDuration(legs) {
+  var moving = legs.reduce(function (t, f) { return t + legDuration(f); }, 0);
+  return { moving: moving, total: moving + (legs.length - 1) * LEG_PAUSE_MS };
+}
+
+// How far a journey is stretched toward the slowest one when they all run together.
+// 0 = natural pace, everything short finishes while the ship is still off Mexico;
+// 1 = everything lands at the same instant, which throws away the point that a Guppy
+// crossed the country in a day and the S-II took five weeks. In between, the flights
+// still arrive first — just not by four times over.
+var GATHER = 0.72;
+
 function measure(coords) {
   var segs = [], total = 0;
   for (var i = 1; i < coords.length; i++) {
@@ -942,7 +955,9 @@ function stopRunsAlong(legKey) {
 // Mississippi and an unrelated line that starts there.
 //
 // Keyed on the first leg, so a journey is started, restarted and stopped as a unit.
-function traceRoute(feature) {
+// `pace` scales every leg by the same factor, so a journey can be slowed to run
+// alongside others without its speed changing part-way through (see the play button).
+function traceRoute(feature, pace) {
   var key = feature.get('key');
   stopRun(key);
 
@@ -966,7 +981,7 @@ function traceRoute(feature) {
     var mode = f.get('route').mode;
     var coords = f.getGeometry().getCoordinates();
     var metric = measure(coords);
-    var ms = legDuration(f);
+    var ms = legDuration(f) * (pace || 1);
 
     var trail = new ol.Feature({ geometry: new ol.geom.LineString([coords[0], coords[0]]) });
     trail.set('mode', mode);
@@ -1094,7 +1109,20 @@ playBtn.onclick = function () {
   // Pull back to the home frame first if the presenter has zoomed in — every route
   // ends up on screen, which is the point of tracing them together.
   fitHome(600);
-  starts.forEach(traceRoute);
+
+  // Traced together, the journeys are being compared, so they're paced to land near
+  // each other: at their natural speeds the flights and the short Michoud barge are
+  // finished while the S-II is still off Mexico, and the room stops watching. Each
+  // journey is stretched GATHER of the way toward the slowest — the pause at a stop
+  // isn't stretched, so the factor is worked out over moving time only. Traced on its
+  // own, a route still runs at its natural pace.
+  var journeys = starts.map(journeyLegs).map(journeyDuration);
+  var slowest = Math.max.apply(null, journeys.map(function (d) { return d.total; }));
+  starts.forEach(function (f, i) {
+    var d = journeys[i];
+    var target = d.total + (slowest - d.total) * GATHER;
+    traceRoute(f, (target - (d.total - d.moving)) / d.moving);
+  });
 };
 syncPlayButton();
 
