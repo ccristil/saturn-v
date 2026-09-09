@@ -19,6 +19,7 @@
   :root {
     --void: #111a35;
     --panel: rgba(15, 22, 46, 0.92);
+    --panel-solid: #0f162e; /* popups: opaque, so nothing under them ghosts through */
     --ink: #ffffff;
     --muted: rgba(255, 255, 255, 0.62);
     --faint: rgba(255, 255, 255, 0.34);
@@ -37,6 +38,12 @@
 
     --font: 'Fustat', system-ui, -apple-system, 'Segoe UI', sans-serif;
     --radius-pill: 2000px;
+
+    /* Two layers over the map: the standing chrome (title, legend), and popups above
+       it. A popup is opened deliberately and is the thing being read at that moment,
+       so it clears everything else. */
+    --z-chrome: 5;
+    --z-popup: 20;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -91,7 +98,7 @@
   .title {
     position: absolute;
     top: 22px; left: 24px;
-    z-index: 5;
+    z-index: var(--z-chrome);
     pointer-events: none;
     max-width: 30rem;
   }
@@ -118,7 +125,7 @@
   .panel {
     position: absolute;
     top: 22px; right: 24px;
-    z-index: 5;
+    z-index: var(--z-chrome);
     width: 268px;
     background: var(--panel);
     border: 1px solid var(--rule);
@@ -179,6 +186,15 @@
   .playbtn[data-playing='1'] { background: var(--c-barge); border-color: var(--c-barge); color: #06201d; }
 
   /* --- popup --- */
+  /* OL parks its overlays in a container that ol.css gives `z-index: 0`. A positioned
+     element with any z-index starts a stacking context, so a popup inside it can never
+     rise above the title or the legend, however high its own z-index — the container
+     is what has to move. (The zoom control and the attribution ride in the same
+     container; they sit in corners nothing else uses.)
+     `!important` is load-bearing, not laziness: OL writes that z-index as an inline
+     style on the container, which outranks any stylesheet rule without it. */
+  .ol-overlaycontainer-stopevent { z-index: var(--z-popup) !important; }
+
   .popup {
     /* `relative`, not `absolute`: OL sizes its overlay container from this element and
        positions the container so the element's bottom-centre lands on the marker.
@@ -187,13 +203,11 @@
     position: relative;
     min-width: 244px;
     max-width: 320px;
-    background: var(--panel);
+    background: var(--panel-solid);
     border: 1px solid var(--rule);
     border-radius: 14px;
     padding: 14px 16px 15px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
     display: none;
   }
   .popup[data-open='1'] { display: block; }
@@ -204,7 +218,7 @@
     left: 50%; bottom: -7px;
     width: 12px; height: 12px;
     margin-left: -6px;
-    background: var(--panel);
+    background: var(--panel-solid);
     border-right: 1px solid var(--rule);
     border-bottom: 1px solid var(--rule);
     transform: rotate(45deg);
