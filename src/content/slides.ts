@@ -72,6 +72,14 @@ export type EmbeddedMap = {
   src: string;
 };
 
+// A set of photos shown one at a time on a single slide. The presenter steps through
+// them with → / ← without leaving the slide; each crossfades into the last. The
+// first photo is already up when the slide arrives, so a gallery costs one presenter
+// beat fewer than it has images. `src` is relative to BASE_URL.
+export type Gallery = {
+  images: { src: string; alt: string; caption?: string }[];
+};
+
 // A second vehicle parked beside the Saturn V on this slide, scaled by its real
 // height so the size comparison is honest. `model` is relative to BASE_URL.
 export type Compare = {
@@ -97,6 +105,7 @@ export type Slide = {
   race?: Race; // two elapsed-time bars on a shared scale, revealed one per step
   scale?: Scale; // to-scale silhouettes in a right-hand column beside the main content
   compare?: Compare; // a second vehicle beside the Saturn V, to scale
+  gallery?: Gallery; // photos stepped one at a time on this slide, crossfading
   map?: EmbeddedMap; // full-bleed embedded page; suppresses this slide's own text
   timeline?: TimelineStop[]; // horizontal milestone axis; dots grow left → right
   span?: string; // label for the bracket drawn under the whole timeline
@@ -226,7 +235,7 @@ export const slides: Slide[] = [
     ],
   },
   {
-    id: "where-it-was-built",
+    id: "made-in-the-usa",
     title: "Made in the USA 🇺🇸",
     // DRAFT COPY — presenter rewrites. The map's data (sites, contractors, routes)
     // lives in public/map/assembly-map.html, which is a standalone page in its own
@@ -234,6 +243,48 @@ export const slides: Slide[] = [
     subtitle:
       "Stages were built across the country and then trucked, floated, and flown to the Kennedy Space Center for assembly.",
     map: { src: "map/assembly-map.html" },
+  },
+  {
+    id: "moving-the-stages",
+    eyebrow: "Getting it to the Cape",
+    // DRAFT COPY — presenter rewrites the title/subtitle. The captions are factual and
+    // belong to their photos.
+    title: "You can't ship it in a box",
+    subtitle:
+      "Every stage was too big for a road and too big for a runway. So they went by water — and when they couldn't wait for the water, they built an aeroplane around them.",
+    gallery: {
+      images: [
+        {
+          src: "img/saturn-v-seal-beach-tranport.webp",
+          alt: "An S-II second stage moved out of the North American Aviation plant at Seal Beach, California",
+          caption:
+            "Seal Beach, California — an S-II second stage leaves the plant on its way to the water.",
+        },
+        {
+          src: "img/saturn-v-from-ca-to-fl.jpg",
+          alt: "A Saturn V stage on a barge, travelling from California to Florida",
+          caption:
+            "California to Florida the long way: down the Baja coast, through the Panama Canal, up into the Gulf.",
+        },
+        {
+          src: "img/guppy-transport.jpeg",
+          alt: "The Pregnant Guppy transport aircraft on the ground",
+          caption:
+            "The Pregnant Guppy — a Boeing Stratocruiser cut open and rebuilt around its cargo.",
+        },
+        {
+          src: "img/pregnant-guppy-being-loaded.webp",
+          alt: "A sequence of frames showing a stage being loaded into the Pregnant Guppy",
+          caption:
+            "Loading, frame by frame. Weeks of barge time become hours of flight time.",
+        },
+        {
+          src: "img/pregant-guppy-in-flight.jpeg",
+          alt: "The Pregnant Guppy in flight",
+          caption: "And then it flies. Somehow.",
+        },
+      ],
+    },
   },
 ];
 
@@ -247,7 +298,14 @@ export function slideSteps(slide?: Slide) {
   const kicker = slide?.race && slide.kicker ? 1 : 0;
   const scale = slide?.race && slide.scale ? 1 : 0;
   const fade = slide?.fadeCues ? 1 : 0; // the silent tail beat, always last
-  const shown = slide?.bullets ? slide.bullets.length : lanes + kicker + scale;
+  // A gallery steps photo-to-photo. The first one is already on screen when the slide
+  // arrives, so the set costs one beat fewer than it has images.
+  const gallery = slide?.gallery ? slide.gallery.images.length - 1 : 0;
+  const shown = slide?.bullets
+    ? slide.bullets.length
+    : slide?.gallery
+      ? gallery
+      : lanes + kicker + scale;
   return {
     kickerBeat: lanes + 1,
     scaleBeat: lanes + kicker + 1,

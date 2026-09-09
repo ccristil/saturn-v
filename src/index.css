@@ -949,3 +949,105 @@ canvas {
   display: block;
   background: var(--void);
 }
+
+/* --- Gallery slide: one photo per presenter beat, crossfading in place ---
+   The set mixes portrait, landscape and square shots, so every photo is `contain`ed
+   inside one fixed stage rather than sizing the slide itself — stepping through them
+   never moves the title, the caption row, or the dots. */
+.deck__slide--gallery {
+  justify-content: flex-start;
+  padding-top: 5vh;
+  padding-bottom: 3vh;
+  gap: 10px;
+}
+/* The photos are the point here; the words are the setup. Both shrink so the stage
+   gets the height. */
+.deck__slide--gallery .deck__title {
+  font-size: 54px;
+}
+.deck__slide--gallery .deck__subtitle {
+  font-size: 21px;
+  max-width: 74ch;
+}
+.gallery {
+  flex: 1;
+  min-height: 0; /* without this the stage refuses to shrink and pushes the foot off */
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 6px;
+}
+.gallery__stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.gallery__item {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.99);
+  transition: opacity 480ms ease, transform 480ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  pointer-events: none;
+}
+.gallery__item.is-shown {
+  opacity: 1;
+  transform: none;
+}
+/* Full stage height, natural width — so a landscape shot gets the same presence as a
+   portrait one instead of sitting small in the middle of the slide (these scans are
+   only 400–1100px tall; at native size they'd read as thumbnails from the back of the
+   room). `width: auto` keeps the ratio, so the shadow and the rounded corners hug the
+   photo itself. max-width is a guard for a future photo wider than the stage: that one
+   would letterbox inside its box rather than overflow. */
+.gallery__image {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 20px;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+}
+.gallery__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  min-height: 30px; /* holds the row's height so a one-line caption can't shift the stage */
+}
+.gallery__caption {
+  font: italic 400 18px/1.4 var(--font-serif);
+  color: var(--muted);
+  /* keyed on the photo index in Presentation → remounts, so this replays per step */
+  animation: gallery-caption 420ms ease;
+}
+@keyframes gallery-caption {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.gallery__dots {
+  display: flex;
+  gap: 9px;
+  flex: none;
+}
+.gallery__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+.gallery__dot.is-active {
+  background: var(--accent);
+  transform: scale(1.35);
+}

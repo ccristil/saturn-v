@@ -184,6 +184,20 @@ export function Presentation({
     [],
   )
 
+  // A gallery slide holds one photo per presenter beat. The whole set is in the DOM at
+  // once (crossfading on opacity), and every gallery in the deck is warmed the moment
+  // the deck opens — so stepping to the next photo never waits on a download in front
+  // of the room. Clamped, because stepping back into a finished slide sets `revealed`
+  // to its full step count.
+  useEffect(() => {
+    for (const s of slides)
+      for (const img of s.gallery?.images ?? []) {
+        const pre = new Image()
+        pre.src = import.meta.env.BASE_URL + img.src
+      }
+  }, [slides])
+  const shot = slide.gallery ? Math.min(revealed, slide.gallery.images.length - 1) : 0
+
   const timing = slide.timeline ? timelineTiming(slide.timeline.length) : null
   const tailDelay = timing ? timing.end + 150 : 0
 
@@ -231,6 +245,7 @@ export function Presentation({
           `deck__slide--${slide.kind ?? 'content'}`,
           slide.scale && 'deck__slide--split',
           slide.image && 'deck__slide--has-image',
+          slide.gallery && 'deck__slide--gallery',
           mapSrc && 'deck__slide--map',
         ]
           .filter(Boolean)
@@ -398,6 +413,46 @@ export function Presentation({
               {p}
             </p>
           ))}
+
+          {slide.gallery && (
+            <div className="gallery">
+              {/* Every photo is stacked in the same box and crossfaded on opacity, so
+                  a portrait shot following a landscape one doesn't resize the slide
+                  under the presenter. */}
+              <div className="gallery__stage">
+                {slide.gallery.images.map((img, i) => (
+                  <figure
+                    className={`gallery__item${i === shot ? ' is-shown' : ''}`}
+                    key={img.src}
+                    aria-hidden={i !== shot}
+                  >
+                    <img
+                      className="gallery__image"
+                      src={import.meta.env.BASE_URL + img.src}
+                      alt={img.alt}
+                    />
+                  </figure>
+                ))}
+              </div>
+              {/* The caption sits below the stage rather than inside it: contained
+                  photos land at different heights, and a caption that moved with them
+                  would jump on every step. Keyed on the index so it fades with the
+                  photo it belongs to. */}
+              <div className="gallery__foot">
+                <p className="gallery__caption" key={shot}>
+                  {slide.gallery.images[shot].caption}
+                </p>
+                <div className="gallery__dots" aria-hidden>
+                  {slide.gallery.images.map((img, i) => (
+                    <span
+                      className={`gallery__dot${i === shot ? ' is-active' : ''}`}
+                      key={img.src}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {slide.bullets && (
             <ul className="deck__bullets">
