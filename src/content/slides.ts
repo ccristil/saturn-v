@@ -230,7 +230,7 @@ export const slides: Slide[] = [
         text: "The Saturn V clustered 5 F-1 engines, the Soviets' N1 clustered 30 smaller ones on its first stage. SpaceX has a similar engine count with the Falcon Heavy and Starship.",
       },
       {
-        text: "It launched four times, 1969 to 1972, and but never reached orbit. The USSR quietly cancelled the program and denied it had ever existed until the late 1980s.",
+        text: "It launched four times, 1969 to 1972, and never reached orbit. The USSR quietly cancelled the program and denied it had ever existed until the late 1980s.",
       },
       {
         text: "The second launch, July 3, 1969 — two weeks before Apollo 11 — is still the largest non-nuclear explosion in history.",
@@ -254,7 +254,7 @@ export const slides: Slide[] = [
     // belong to their photos.
     title: "You can't ship it in a box",
     subtitle:
-      "Every stage was too big for a road and too big for a runway. So they went by water — and when they couldn't wait for the water, they built an plane around them.",
+      "Every stage was too big for a road and too big for a runway. So they went by water — and when they couldn't wait for the water, they built a plane around them.",
     gallery: {
       images: [
         {
