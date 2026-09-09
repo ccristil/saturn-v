@@ -166,7 +166,7 @@ export const slides: Slide[] = [
       "Three reasons this machine is still worth half an hour of your afternoon.",
     // DRAFT COPY — rewrite these two; the third is the payoff and carries the cue.
     bullets: [
-      { text: "It flew thirteen times and never lost a crew." },
+      { text: "It was built in the 60s." },
       {
         text: "Four hundred thousand people built it, and not one of them saw the whole thing.",
       },
@@ -198,3 +198,19 @@ export const slides: Slide[] = [
     ],
   },
 ];
+
+// The presenter-stepped beats on a slide, in the order they land. A bulleted slide
+// steps its bullets. A race slide steps each lane, then the kicker, then the to-scale
+// drawing — so the payoff line and the exhibit each get a beat of their own instead
+// of arriving with the last bar. App drives `revealed` from `count`; Presentation
+// decides what to show from the same beats, so the two can't fall out of step.
+export function slideSteps(slide?: Slide) {
+  const lanes = slide?.race?.lanes.length ?? 0;
+  const kicker = slide?.race && slide.kicker ? 1 : 0;
+  const scale = slide?.race && slide.scale ? 1 : 0;
+  return {
+    kickerBeat: lanes + 1,
+    scaleBeat: lanes + kicker + 1,
+    count: slide?.bullets ? slide.bullets.length : lanes + kicker + scale,
+  };
+}

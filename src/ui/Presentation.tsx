@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import type { Slide } from '../content/slides'
+import { slideSteps } from '../content/slides'
 import { fireConfetti, stopConfetti } from './confetti'
 import { flyby, preloadFlyby, stopFlyby } from './flyby'
 import { ScaleCompare } from './ScaleCompare'
@@ -144,8 +145,12 @@ export function Presentation({
   // measured against the same scale. On a race slide the kicker is the final
   // presenter beat (one step past the last lane) rather than a timed tail.
   const raceMax = slide.race ? Math.max(...slide.race.lanes.map((l) => l.days)) : 1
-  const kickerStepped = !!slide.race
-  const kickerShown = kickerStepped && revealed > slide.race!.lanes.length
+  // On a race slide the kicker and the to-scale drawing are the last two presenter
+  // beats rather than timed tails — each waits for its own step and reverses on ←.
+  const beats = slideSteps(slide)
+  const stepped = !!slide.race
+  const kickerShown = stepped && revealed >= beats.kickerBeat
+  const scaleShown = stepped && revealed >= beats.scaleBeat
 
   return (
     <div
@@ -290,18 +295,18 @@ export function Presentation({
             <p
               className={[
                 'deck__kicker',
-                kickerStepped && 'deck__kicker--step',
+                stepped && 'deck__kicker--step',
                 kickerShown && 'is-shown',
               ]
                 .filter(Boolean)
                 .join(' ')}
-              style={kickerStepped ? undefined : { animationDelay: `${tailDelay + 200}ms` }}
+              style={stepped ? undefined : { animationDelay: `${tailDelay + 200}ms` }}
             >
               {slide.kicker}
             </p>
           )}
             </div>
-            <ScaleCompare scale={slide.scale} />
+            <ScaleCompare scale={slide.scale} stepped={stepped} shown={scaleShown} />
           </div>
         ) : (
           <>
@@ -419,12 +424,12 @@ export function Presentation({
             <p
               className={[
                 'deck__kicker',
-                kickerStepped && 'deck__kicker--step',
+                stepped && 'deck__kicker--step',
                 kickerShown && 'is-shown',
               ]
                 .filter(Boolean)
                 .join(' ')}
-              style={kickerStepped ? undefined : { animationDelay: `${tailDelay + 200}ms` }}
+              style={stepped ? undefined : { animationDelay: `${tailDelay + 200}ms` }}
             >
               {slide.kicker}
             </p>

@@ -21,7 +21,7 @@ import {
   MODEL_CREDIT,
   COMPARE_CREDIT,
 } from './content/hotspots'
-import { slides } from './content/slides'
+import { slides, slideSteps } from './content/slides'
 
 // TEMP (Task 8): press 'p' to log the current camera pose for hotspots.ts. Removed after tuning.
 function PoseLogger() {
@@ -56,13 +56,7 @@ export default function App() {
   // slide. Bullets are one beat each; a race is one beat per lane plus a final beat
   // for the kicker, so the payoff line lands on its own step.
   const [revealed, setRevealed] = useState(0)
-  const stepCount = (i: number) => {
-    const s = slides[i]
-    if (!s) return 0
-    if (s.bullets) return s.bullets.length
-    if (s.race) return s.race.lanes.length + (s.kicker ? 1 : 0)
-    return 0
-  }
+  const stepCount = (i: number) => slideSteps(slides[i]).count
 
   // Warm every slide's comparison model at startup: mounting one cold, mid-talk,
   // would suspend and blank the scene for as long as the download takes.

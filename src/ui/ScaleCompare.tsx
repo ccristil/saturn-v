@@ -59,7 +59,15 @@ function payload(kg: number) {
   return kg >= 1000 ? `${(kg / 1000).toLocaleString()} t` : `${kg.toLocaleString()} kg`
 }
 
-export function ScaleCompare({ scale }: { scale: Scale }) {
+export function ScaleCompare({
+  scale,
+  stepped = false,
+  shown = true,
+}: {
+  scale: Scale
+  stepped?: boolean // this panel is a presenter beat rather than part of the slide
+  shown?: boolean
+}) {
   const ground = Math.max(...scale.vehicles.map((v) => v.heightM))
   const [a, b] = scale.vehicles
 
@@ -77,7 +85,11 @@ export function ScaleCompare({ scale }: { scale: Scale }) {
   const width = x - GAP
 
   return (
-    <div className="scale">
+    <div
+      className={['scale', stepped && 'scale--step', stepped && shown && 'is-shown']
+        .filter(Boolean)
+        .join(' ')}
+    >
       {scale.eyebrow && <div className="scale__eyebrow">{scale.eyebrow}</div>}
 
       <div className="scale__stage">
