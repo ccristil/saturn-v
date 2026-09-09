@@ -222,15 +222,18 @@ export const slides: Slide[] = [
   {
     id: "saturn-v-vs-russian-rocket",
     kind: "hero",
-    title: "Russia 🇷🇺",
-    subtitle: "What was Russia up to while America was building the Saturn V? ",
-    body: [
-      "PLACEHOLDER. Advancing past this slide grows the model into the full 3D walkthrough.",
-    ],
+    title: "USSR ☭",
+    subtitle: "What did the USSR build?",
     compare: { model: "models/n1.glb", heightM: 105.3 },
     bullets: [
       {
-        text: "The N1 rocket was the Soviet Union's answer to the Saturn V.",
+        text: "The Saturn V clustered 5 F-1 engines, the Soviets' N1 clustered 30 smaller ones on its first stage. SpaceX has a similar engine count with the Falcon Heavy and Starship.",
+      },
+      {
+        text: "It launched four times, 1969 to 1972, and but never reached orbit. The USSR quietly cancelled the program and denied it had ever existed until the late 1980s.",
+      },
+      {
+        text: "The second launch, July 3, 1969 — two weeks before Apollo 11 — is still the largest non-nuclear explosion in history.",
       },
     ],
   },
@@ -251,7 +254,7 @@ export const slides: Slide[] = [
     // belong to their photos.
     title: "You can't ship it in a box",
     subtitle:
-      "Every stage was too big for a road and too big for a runway. So they went by water — and when they couldn't wait for the water, they built an aeroplane around them.",
+      "Every stage was too big for a road and too big for a runway. So they went by water — and when they couldn't wait for the water, they built an plane around them.",
     gallery: {
       images: [
         {
