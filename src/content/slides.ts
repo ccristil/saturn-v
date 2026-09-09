@@ -80,6 +80,11 @@ export type Slide = {
   subtitle?: string;
   body?: string[];
   bullets?: Bullet[]; // revealed one at a time by the presenter
+  // A trailing presenter beat that changes nothing on screen: its only job is to
+  // take any sound still playing down to silence over this many ms. Lets the
+  // presenter keep talking over the slide instead of having to leave it to stop the
+  // music. (\u2190 off the beat still cuts the sound dead \u2014 that stays the kill switch.)
+  fadeCues?: number;
   race?: Race; // two elapsed-time bars on a shared scale, revealed one per step
   scale?: Scale; // to-scale silhouettes in a right-hand column beside the main content
   compare?: Compare; // a second vehicle beside the Saturn V, to scale
@@ -168,7 +173,7 @@ export const slides: Slide[] = [
     bullets: [
       { text: "It was built in the 60s." },
       {
-        text: "Four hundred thousand people built it, and not one of them saw the whole thing.",
+        text: "~400,000 people built it, and not one of them saw the whole thing.",
       },
       {
         text: "America.",
@@ -181,6 +186,9 @@ export const slides: Slide[] = [
         flyby: "img/eagle-flying.gif",
       },
     ],
+    // One more \u2192 tapers the anthem out over 4.5s, so the presenter can talk through
+    // the slide's points without the music under them and without a hard cut.
+    fadeCues: 4500,
   },
   {
     id: "saturn-v-vs-russian-rocket",
@@ -208,9 +216,12 @@ export function slideSteps(slide?: Slide) {
   const lanes = slide?.race?.lanes.length ?? 0;
   const kicker = slide?.race && slide.kicker ? 1 : 0;
   const scale = slide?.race && slide.scale ? 1 : 0;
+  const fade = slide?.fadeCues ? 1 : 0; // the silent tail beat, always last
+  const shown = slide?.bullets ? slide.bullets.length : lanes + kicker + scale;
   return {
     kickerBeat: lanes + 1,
     scaleBeat: lanes + kicker + 1,
-    count: slide?.bullets ? slide.bullets.length : lanes + kicker + scale,
+    fadeBeat: shown + 1,
+    count: shown + fade,
   };
 }

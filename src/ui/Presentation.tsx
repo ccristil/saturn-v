@@ -73,7 +73,9 @@ export function Presentation({
   const cues = useRef<Record<string, HTMLAudioElement>>({})
   const playing = useRef<HTMLAudioElement[]>([])
   const timers = useRef<number[]>([])
+  const fadeTimer = useRef<number | null>(null)
   const lastStep = useRef({ index, revealed })
+  const beats = slideSteps(slide)
 
   useEffect(() => {
     for (const cue of slide.bullets?.flatMap((b) => b.sounds ?? []) ?? []) {
@@ -87,6 +89,8 @@ export function Presentation({
   }, [slide])
 
   const stopCues = () => {
+    if (fadeTimer.current !== null) clearInterval(fadeTimer.current)
+    fadeTimer.current = null
     timers.current.forEach(clearTimeout)
     timers.current = []
     for (const a of playing.current) {
@@ -94,6 +98,31 @@ export function Presentation({
       a.currentTime = 0
     }
     playing.current = []
+  }
+
+  // Take everything currently playing down to silence over `ms`, then stop it for
+  // real. A raised-cosine ramp — it leaves and arrives at zero slope, so it reads as
+  // the music receding rather than as someone turning a knob. Volumes aren't restored
+  // here: every cue sets its own on play, so a replay comes back at full level.
+  //
+  // On an interval rather than requestAnimationFrame on purpose. This is a scalar
+  // ramp, not something that needs to land on a vsync, and rAF only fires when the
+  // compositor is producing frames — if it stalls, the fade jumps instead of tapering,
+  // in the middle of the talk. Elapsed time is read from the clock each tick, so the
+  // fade still finishes on schedule even if ticks are late.
+  const fadeOutCues = (ms: number) => {
+    const audios = [...playing.current]
+    if (!audios.length) return
+    const from = audios.map((a) => a.volume)
+    const start = performance.now()
+    fadeTimer.current = window.setInterval(() => {
+      const t = Math.min(1, (performance.now() - start) / ms)
+      const k = 0.5 * (1 + Math.cos(Math.PI * t))
+      audios.forEach((a, i) => {
+        a.volume = Math.max(0, Math.min(1, from[i] * k))
+      })
+      if (t >= 1) stopCues()
+    }, 25)
   }
 
   useEffect(() => {
@@ -105,6 +134,13 @@ export function Presentation({
       stopCues()
       stopConfetti()
       stopFlyby()
+      return
+    }
+
+    // The trailing fade beat: nothing new on screen, so the presenter can keep
+    // talking over the slide while the sound recedes under them.
+    if (slide.fadeCues && revealed === beats.fadeBeat) {
+      fadeOutCues(slide.fadeCues)
       return
     }
 
@@ -147,7 +183,6 @@ export function Presentation({
   const raceMax = slide.race ? Math.max(...slide.race.lanes.map((l) => l.days)) : 1
   // On a race slide the kicker and the to-scale drawing are the last two presenter
   // beats rather than timed tails — each waits for its own step and reverses on ←.
-  const beats = slideSteps(slide)
   const stepped = !!slide.race
   const kickerShown = stepped && revealed >= beats.kickerBeat
   const scaleShown = stepped && revealed >= beats.scaleBeat
