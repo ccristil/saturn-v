@@ -273,12 +273,6 @@ export const slides: Slide[] = [
             "The Pregnant Guppy — a Boeing Stratocruiser cut open and rebuilt around its cargo.",
         },
         {
-          src: "img/pregnant-guppy-being-loaded.webp",
-          alt: "A sequence of frames showing a stage being loaded into the Pregnant Guppy",
-          caption:
-            "Loading, frame by frame. Weeks of barge time become hours of flight time.",
-        },
-        {
           src: "img/pregant-guppy-in-flight.jpeg",
           alt: "The Pregnant Guppy in flight",
           caption: "And then it flies. Somehow.",
