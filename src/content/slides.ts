@@ -189,6 +189,52 @@ export const slides: Slide[] = [
     },
   },
   {
+    id: "made-in-the-usa",
+    title: "Made in the USA 🇺🇸",
+    // DRAFT COPY — presenter rewrites. The map's data (sites, contractors, routes)
+    // lives in public/map/assembly-map.html, which is a standalone page in its own
+    // right; only these three lines are passed in from here.
+    subtitle:
+      "Stages were built across the country and then trucked, floated, and flown to the Kennedy Space Center for assembly.",
+    map: { src: "map/assembly-map.html" },
+  },
+  {
+    id: "moving-the-stages",
+    eyebrow: "Getting it to the Cape",
+    // DRAFT COPY — presenter rewrites the title/subtitle. The captions are factual and
+    // belong to their photos.
+    title: "You can't ship it in a box",
+    subtitle:
+      "Every stage was too big for a road and too big for a runway. So they went by water — and when they couldn't wait for the water, they built a plane around them.",
+    gallery: {
+      images: [
+        {
+          src: "img/saturn-v-seal-beach-tranport.webp",
+          alt: "An S-II second stage moved out of the North American Aviation plant at Seal Beach, California",
+          caption:
+            "Seal Beach, California — an S-II second stage leaves the plant on its way to the water.",
+        },
+        {
+          src: "img/saturn-v-from-ca-to-fl.jpg",
+          alt: "A Saturn V stage on a barge, travelling from California to Florida",
+          caption:
+            "California to Florida the long way: down the Baja coast, through the Panama Canal, up into the Gulf.",
+        },
+        {
+          src: "img/guppy-transport.jpeg",
+          alt: "The Pregnant Guppy transport aircraft on the ground",
+          caption:
+            "The Pregnant Guppy — a Boeing Stratocruiser cut open and rebuilt around its cargo.",
+        },
+        {
+          src: "img/pregant-guppy-in-flight.jpeg",
+          alt: "The Pregnant Guppy in flight",
+          caption: "And then it flies. Somehow.",
+        },
+      ],
+    },
+  },
+  {
     id: "why-saturn-v",
     eyebrow: "The case",
     title: "Why the Saturn V",
@@ -236,52 +282,6 @@ export const slides: Slide[] = [
         text: "The second launch, July 3, 1969 — two weeks before Apollo 11 — is still the largest non-nuclear explosion in history.",
       },
     ],
-  },
-  {
-    id: "made-in-the-usa",
-    title: "Made in the USA 🇺🇸",
-    // DRAFT COPY — presenter rewrites. The map's data (sites, contractors, routes)
-    // lives in public/map/assembly-map.html, which is a standalone page in its own
-    // right; only these three lines are passed in from here.
-    subtitle:
-      "Stages were built across the country and then trucked, floated, and flown to the Kennedy Space Center for assembly.",
-    map: { src: "map/assembly-map.html" },
-  },
-  {
-    id: "moving-the-stages",
-    eyebrow: "Getting it to the Cape",
-    // DRAFT COPY — presenter rewrites the title/subtitle. The captions are factual and
-    // belong to their photos.
-    title: "You can't ship it in a box",
-    subtitle:
-      "Every stage was too big for a road and too big for a runway. So they went by water — and when they couldn't wait for the water, they built a plane around them.",
-    gallery: {
-      images: [
-        {
-          src: "img/saturn-v-seal-beach-tranport.webp",
-          alt: "An S-II second stage moved out of the North American Aviation plant at Seal Beach, California",
-          caption:
-            "Seal Beach, California — an S-II second stage leaves the plant on its way to the water.",
-        },
-        {
-          src: "img/saturn-v-from-ca-to-fl.jpg",
-          alt: "A Saturn V stage on a barge, travelling from California to Florida",
-          caption:
-            "California to Florida the long way: down the Baja coast, through the Panama Canal, up into the Gulf.",
-        },
-        {
-          src: "img/guppy-transport.jpeg",
-          alt: "The Pregnant Guppy transport aircraft on the ground",
-          caption:
-            "The Pregnant Guppy — a Boeing Stratocruiser cut open and rebuilt around its cargo.",
-        },
-        {
-          src: "img/pregant-guppy-in-flight.jpeg",
-          alt: "The Pregnant Guppy in flight",
-          caption: "And then it flies. Somehow.",
-        },
-      ],
-    },
   },
 ];
 
