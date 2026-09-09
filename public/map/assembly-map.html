@@ -674,25 +674,32 @@ var map = new ol.Map({
 });
 
 // California to New York, comfortably, with room for the Panama leg to hint offscreen.
-var US_EXTENT = ol.extent.boundingExtent([lonLat([-126, 23.5]), lonLat([-65, 48.5])]);
 // The panel floats over the right edge and the title over the top-left; the padding
-// reserves those bands so nothing important lands underneath them.
-var FIT_PADDING = [110, 310, 80, 60];
+// reserves those bands so nothing important lands underneath them. The top band has to
+// clear the title AND the label sitting above whichever marker lands highest — hence
+// more than the title's own height.
+var FIT_PADDING = [165, 310, 60, 60];
 
-function fitUS(duration) {
-  map.getView().fit(US_EXTENT, { padding: FIT_PADDING, duration: duration || 0 });
+// Home framing is everything the map draws — every site and every route, the Panama
+// detour included — so the whole picture is on screen the moment it opens and nothing
+// has to be found by panning. Measured from the features themselves rather than
+// declared as a bounding box: add a site or re-route a barge and the map re-frames
+// itself instead of quietly cropping the new geometry.
+//
+// Deliberately measured from ALL features, not the visible ones: the framing must not
+// shift under the presenter when a legend toggle is flipped.
+var HOME_EXTENT = ol.extent.createEmpty();
+[siteSource, routeSource].forEach(function (src) {
+  src.getFeatures().forEach(function (f) {
+    ol.extent.extend(HOME_EXTENT, f.getGeometry().getExtent());
+  });
+});
+
+function fitHome(duration) {
+  map.getView().fit(HOME_EXTENT, { padding: FIT_PADDING, duration: duration || 0 });
 }
 
-// Widen the home view just far enough to hold `extent` too, and no further. Used
-// when a route runs off the continent — the Seal Beach ship goes to Panama — so the
-// detour comes into frame without the US ever leaving it.
-function fitIncluding(extent, duration) {
-  var e = US_EXTENT.slice();
-  ol.extent.extend(e, extent);
-  map.getView().fit(e, { padding: FIT_PADDING, duration: duration == null ? 700 : duration });
-}
-
-fitUS(0);
+fitHome(0);
 
 // Embedded pages get resized by their host — a deck going fullscreen mid-talk, say.
 // OL only re-measures on a window resize, which an iframe doesn't always see, so watch
@@ -703,7 +710,7 @@ if (window.ResizeObserver) {
   new ResizeObserver(function () {
     map.updateSize();
     clearTimeout(settle);
-    settle = setTimeout(function () { fitUS(0); }, 120);
+    settle = setTimeout(function () { fitHome(0); }, 120);
   }).observe(document.getElementById('map'));
 }
 
@@ -858,7 +865,6 @@ map.on('click', function (evt) {
     openSitePopup(f.get('site'), f.getGeometry().getCoordinates());
   } else {
     openRoutePopup(f, evt.coordinate);
-    fitIncluding(f.getGeometry().getExtent());
     traceRoute(f);
   }
 });
@@ -915,13 +921,13 @@ function syncPlayButton() {
   playBtn.textContent = on ? '■  Stop' : '▶  Trace every journey';
 }
 playBtn.onclick = function () {
-  if (Object.keys(runs).length) { stopAllRuns(); fitUS(600); return; }
+  if (Object.keys(runs).length) { stopAllRuns(); return; }
   closePopup();
   var shown = visibleRoutes();
   if (!shown.length) return;
-  var all = ol.extent.createEmpty();
-  shown.forEach(function (f) { ol.extent.extend(all, f.getGeometry().getExtent()); });
-  fitIncluding(all);
+  // Pull back to the home frame first if the presenter has zoomed in — every route
+  // ends up on screen, which is the point of tracing them together.
+  fitHome(600);
   shown.forEach(traceRoute);
 };
 syncPlayButton();
@@ -934,7 +940,7 @@ syncPlayButton();
    never dies mid-talk. Standalone, `parent === window` and this does nothing.
    ------------------------------------------------------------------- */
 window.addEventListener('keydown', function (e) {
-  if (e.key === 'r' || e.key === 'R') { closePopup(); stopAllRuns(); fitUS(500); return; }
+  if (e.key === 'r' || e.key === 'R') { closePopup(); stopAllRuns(); fitHome(500); return; }
   if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Escape' && e.key !== ' ') return;
   if (e.key === 'Escape' && popupEl.dataset.open === '1') { closePopup(); return; }
   if (window.parent === window) return;
