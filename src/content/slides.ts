@@ -113,7 +113,8 @@ export const slides: Slide[] = [
     image: {
       src: "img/saturn-v-apollo-4-the-night-before-launch-november-8-1967-v0-9hN-jgxuNa2UWHKDnry8iSaSl65IEKYD0e-TwlTjchI.webp",
       alt: "Apollo 4, the night before launch — November 8, 1967",
-      caption: "Saturn V, the night before the Apollo 4 launch — November 8, 1967",
+      caption:
+        "Saturn V, the night before the Apollo 4 launch — November 8, 1967",
     },
   },
   {
@@ -226,13 +227,12 @@ export const slides: Slide[] = [
   },
   {
     id: "where-it-was-built",
-    eyebrow: "Michoud · Seal Beach · Huntsville · Downey · Bethpage",
-    title: "Nobody built a Saturn V",
+    title: "Made in the USA 🇺🇸",
     // DRAFT COPY — presenter rewrites. The map's data (sites, contractors, routes)
     // lives in public/map/assembly-map.html, which is a standalone page in its own
     // right; only these three lines are passed in from here.
     subtitle:
-      "Every stage was built somewhere else, by someone else, and shipped to Florida to meet the rest of the rocket for the first time.",
+      "Stages were built across the country and then trucked, floated, and flown to the Kennedy Space Center for assembly.",
     map: { src: "map/assembly-map.html" },
   },
 ];

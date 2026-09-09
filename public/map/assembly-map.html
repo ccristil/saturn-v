@@ -388,10 +388,16 @@ var SITES = [
    approximated by eye, but they go where ships can actually go.
 
    Routes without a `path` are drawn as a gentle arc between endpoints (see
-   arcPath) — appropriate for the flights, misleading for anything on water. */
+   arcPath) — appropriate for the flights, misleading for anything on water.
+
+   `continuesTo` says the cargo doesn't stop at this leg's destination: it carries on
+   toward that site on whichever leg starts where this one ends. The stages that were
+   static-fired at the Mississippi Test Facility went on to the Cape from there, and
+   both of them took the same barge run to do it — so that leg is drawn once and
+   shared, and this is what stitches it back onto each stage's own journey. */
 var ROUTES = [
   {
-    from: 'michoud', to: 'stennis', mode: 'barge',
+    from: 'michoud', to: 'stennis', mode: 'barge', continuesTo: 'ksc',
     note: 'Down the Intracoastal Waterway, through the Rigolets into Mississippi Sound, then up the Pearl River to the test canal.',
     path: [
       [-89.9236, 29.9975], [-89.8300, 30.0350], [-89.7400, 30.0700],
@@ -413,7 +419,7 @@ var ROUTES = [
     ]
   },
   {
-    from: 'sealbeach', to: 'stennis', mode: 'barge',
+    from: 'sealbeach', to: 'stennis', mode: 'barge', continuesTo: 'ksc',
     note: 'The S-II was too big for any aircraft. It sailed down the Baja coast, through the Panama Canal and across the Gulf aboard the barge Point Barrow — about five weeks under way.',
     path: [
       // down the Pacific side of Baja
@@ -809,9 +815,14 @@ function openSitePopup(site, coord) {
 function openRoutePopup(feature, coord) {
   var r = feature.get('route');
   var m = MODE[r.mode];
+  // Name every stop, so a leg that continues doesn't read as the end of the trip.
+  var legs = journeyLegs(feature);
+  var stops = [legs[0].get('from').short].concat(legs.map(function (f) {
+    return f.get('to').short;
+  }));
   popupBody.innerHTML =
     '<span class="popup__tag" style="background:' + rgba(m.color, 0.18) + ';color:' + m.color + '">' + esc(m.label) + '</span>' +
-    '<div class="popup__name">' + esc(feature.get('from').short) + ' → ' + esc(feature.get('to').short) + '</div>' +
+    '<div class="popup__name">' + stops.map(esc).join(' → ') + '</div>' +
     '<div class="popup__desc">' + esc(r.note) + '</div>' +
     (r.unverified ? '<div class="popup__warn">⚠ Unverified leg — confirm before presenting.</div>' : '') +
     '<div class="popup__hint">Tracing…</div>';
@@ -825,7 +836,55 @@ function openRoutePopup(feature, coord) {
    once (the "trace every journey" button), so state is per-run, not global.
    ------------------------------------------------------------------- */
 
-var runs = {}; // key → run
+var runs = {}; // key of a journey's first leg → the run tracing it
+
+var LEG_PAUSE_MS = 500; // the beat at an intermediate stop — the stage is being fired
+
+// The legs of the journey that starts with `feature`: the leg itself, then whatever
+// it continues into, and so on. Only visible legs, so a journey stops at the junction
+// if the presenter has toggled the next leg off rather than jumping a gap.
+function journeyLegs(feature) {
+  var legs = [feature];
+  for (;;) {
+    var r = legs[legs.length - 1].get('route');
+    if (!r.continuesTo) return legs;
+    var next = routeSource.getFeatures().filter(function (g) {
+      var s = g.get('route');
+      return s.from === r.to && s.to === r.continuesTo && routeVisible(g);
+    })[0];
+    // a cycle in the data would loop forever; a leg can appear once per journey
+    if (!next || legs.indexOf(next) !== -1) return legs;
+    legs.push(next);
+  }
+}
+
+// True if some other visible leg continues into this one — i.e. it's the middle or end
+// of a journey, not the start of one. "Trace every journey" walks only the starts, so
+// a shared leg isn't animated a second time on its own.
+function isContinuation(feature) {
+  var r = feature.get('route');
+  return routeSource.getFeatures().some(function (g) {
+    var s = g.get('route');
+    return g !== feature && routeVisible(g) && s.continuesTo === r.to && s.to === r.from;
+  });
+}
+
+// One speed per transport mode rather than one duration per leg. Derived from the
+// longest route of that mode, so the longest barge run still takes MODE.barge.ms
+// exactly as before and every shorter leg takes proportionally less. Without this a
+// journey lurches when it changes legs — a short hop drawn in the same time as an
+// ocean crossing reads as the ship suddenly crawling.
+var LONGEST_BY_MODE = {};
+routeSource.getFeatures().forEach(function (f) {
+  var mode = f.get('route').mode;
+  LONGEST_BY_MODE[mode] = Math.max(LONGEST_BY_MODE[mode] || 0, f.getGeometry().getLength());
+});
+
+function legDuration(feature) {
+  var m = MODE[feature.get('route').mode];
+  var share = feature.getGeometry().getLength() / LONGEST_BY_MODE[feature.get('route').mode];
+  return Math.max(700, m.ms * share);
+}
 
 function measure(coords) {
   var segs = [], total = 0;
@@ -857,7 +916,8 @@ function stopRun(key) {
   var run = runs[key];
   if (!run) return;
   cancelAnimationFrame(run.raf);
-  trailSource.removeFeature(run.trail);
+  clearTimeout(run.hold);
+  run.trails.forEach(function (t) { trailSource.removeFeature(t); });
   travelSource.removeFeature(run.dot);
   delete runs[key];
   syncPlayButton();
@@ -867,43 +927,76 @@ function stopAllRuns() {
   Object.keys(runs).forEach(stopRun);
 }
 
+// Stop any journey that passes along this leg — used when the presenter hides a route
+// mid-animation, where the leg being hidden may be the second half of what's running.
+function stopRunsAlong(legKey) {
+  Object.keys(runs).forEach(function (k) {
+    if (runs[k].legKeys.indexOf(legKey) !== -1) stopRun(k);
+  });
+}
+
+// Trace a whole journey — the clicked leg plus anything it continues into — as one
+// unbroken run: one marker the whole way, and each finished leg left drawn while the
+// next one draws. The S-II's trip then reads as Seal Beach → the test stand → the
+// Cape, which is what actually happened, rather than as a line that stops in
+// Mississippi and an unrelated line that starts there.
+//
+// Keyed on the first leg, so a journey is started, restarted and stopped as a unit.
 function traceRoute(feature) {
   var key = feature.get('key');
-  if (runs[key]) stopRun(key);
+  stopRun(key);
 
-  var r = feature.get('route');
-  var m = MODE[r.mode];
-  var coords = feature.getGeometry().getCoordinates();
-  var metric = measure(coords);
-
-  var trail = new ol.Feature({ geometry: new ol.geom.LineString([coords[0], coords[0]]) });
-  trail.set('mode', r.mode);
-  trailSource.addFeature(trail);
-
-  var dot = new ol.Feature({ geometry: new ol.geom.Point(coords[0]) });
-  dot.set('mode', r.mode);
+  var legs = journeyLegs(feature);
+  var dot = new ol.Feature({
+    geometry: new ol.geom.Point(legs[0].getGeometry().getCoordinates()[0])
+  });
   travelSource.addFeature(dot);
 
-  var start = performance.now();
-  var run = { trail: trail, dot: dot, raf: 0 };
+  var run = {
+    trails: [],
+    dot: dot,
+    raf: 0,
+    hold: 0,
+    legKeys: legs.map(function (f) { return f.get('key'); })
+  };
   runs[key] = run;
 
-  function frame(now) {
-    var t = Math.min(1, (now - start) / m.ms);
-    // ease in and out — a barge does not leave the dock at cruising speed
-    var e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-    var at = sliceAt(coords, metric, e);
-    trail.getGeometry().setCoordinates(at.upto);
-    dot.getGeometry().setCoordinates(at.head);
-    dot.set('rotation', Math.PI / 2 - at.heading);
-    if (t < 1) {
-      run.raf = requestAnimationFrame(frame);
-    } else {
-      // hold the completed trail for a beat, then clear it
-      setTimeout(function () { stopRun(key); }, 900);
+  function runLeg(i) {
+    var f = legs[i];
+    var mode = f.get('route').mode;
+    var coords = f.getGeometry().getCoordinates();
+    var metric = measure(coords);
+    var ms = legDuration(f);
+
+    var trail = new ol.Feature({ geometry: new ol.geom.LineString([coords[0], coords[0]]) });
+    trail.set('mode', mode);
+    trailSource.addFeature(trail);
+    run.trails.push(trail);
+    dot.set('mode', mode);
+
+    var start = performance.now();
+    function frame(now) {
+      var t = Math.min(1, (now - start) / ms);
+      // ease in and out per leg — a barge does not leave the dock at cruising speed,
+      // and a stage really does stop at the test stand before going on
+      var e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      var at = sliceAt(coords, metric, e);
+      trail.getGeometry().setCoordinates(at.upto);
+      dot.getGeometry().setCoordinates(at.head);
+      dot.set('rotation', Math.PI / 2 - at.heading);
+      if (t < 1) {
+        run.raf = requestAnimationFrame(frame);
+      } else if (i + 1 < legs.length) {
+        run.hold = setTimeout(function () { runLeg(i + 1); }, LEG_PAUSE_MS);
+      } else {
+        // hold the finished journey for a beat, then clear the whole thing
+        run.hold = setTimeout(function () { stopRun(key); }, 900);
+      }
     }
+    run.raf = requestAnimationFrame(frame);
   }
-  run.raf = requestAnimationFrame(frame);
+
+  runLeg(0);
   syncPlayButton();
 }
 
@@ -939,13 +1032,22 @@ map.on('pointermove', function (evt) {
 
 /* --- toggles --- */
 
+function routeVisible(f) {
+  return document.getElementById(MODE[f.get('route').mode].toggle).checked;
+}
+
 function visibleRoutes() {
-  return routeSource.getFeatures().filter(function (f) {
-    return document.getElementById(MODE[f.get('route').mode].toggle).checked;
-  });
+  return routeSource.getFeatures().filter(routeVisible);
 }
 
 function applyToggles() {
+  // Stop affected journeys first, and outside the style callbacks: a journey may be
+  // part-way along a leg that was just hidden, and mutating the animation's sources
+  // from inside a style function (which runs during a render) is asking for trouble.
+  routeSource.getFeatures().forEach(function (f) {
+    if (!routeVisible(f)) stopRunsAlong(f.get('key'));
+  });
+
   // Layers stay mounted; individual features are shown or hidden by style, so
   // toggling never rebuilds a source or disturbs an animation in flight.
   siteLayer.setStyle(function (f, res) {
@@ -955,9 +1057,7 @@ function applyToggles() {
     return siteStyle(f, res);
   });
   routeLayer.setStyle(function (f) {
-    var r = f.get('route');
-    if (!document.getElementById(MODE[r.mode].toggle).checked) { stopRun(f.get('key')); return null; }
-    return routeStyle(f);
+    return routeVisible(f) ? routeStyle(f) : null;
   });
 }
 
@@ -986,12 +1086,15 @@ function syncPlayButton() {
 playBtn.onclick = function () {
   if (Object.keys(runs).length) { stopAllRuns(); return; }
   closePopup();
-  var shown = visibleRoutes();
-  if (!shown.length) return;
+  // Journey starts only. A leg that something else continues into (the shared barge
+  // run from the test stand to the Cape) is traced as part of that journey rather
+  // than a second time on its own.
+  var starts = visibleRoutes().filter(function (f) { return !isContinuation(f); });
+  if (!starts.length) return;
   // Pull back to the home frame first if the presenter has zoomed in — every route
   // ends up on screen, which is the point of tracing them together.
   fitHome(600);
-  shown.forEach(traceRoute);
+  starts.forEach(traceRoute);
 };
 syncPlayButton();
 
