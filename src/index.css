@@ -609,6 +609,128 @@ canvas {
   color: var(--muted);
   animation: tl-rise 560ms ease both;
 }
+/* --- Deck split + to-scale drawing (slides.ts `scale`) ----------------------
+   A slide carrying `scale` runs two columns below its title: the argument on the
+   left, the drawing in a fixed right-hand column. The padding tightens so the left
+   column keeps enough width for the race bars' endpoint labels. */
+.deck__slide--split {
+  padding: 0 7vw;
+}
+.deck__split {
+  display: flex;
+  align-items: stretch;
+  gap: 54px;
+}
+.deck__splitmain {
+  flex: 1;
+  min-width: 0; /* let the bars shrink to the column rather than push it wider */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  justify-content: center;
+}
+.deck__splitmain .race {
+  max-width: none; /* the column is the constraint now */
+}
+.deck__splitmain .deck__kicker--step {
+  max-width: none;
+}
+
+.scale {
+  flex: 0 0 400px;
+  display: flex;
+  flex-direction: column;
+  /* a hairline gutter, so the panel reads as its own exhibit next to the bars */
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  padding-left: 34px;
+}
+.scale__eyebrow {
+  font: 600 13px/1 var(--font-sans);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 22px;
+}
+/* The drawing and its labels. The svg fills the height; the label column is placed
+   by percentage against that same height, so a tag lines up with its own nose. */
+.scale__stage {
+  /* An explicit height, not flex:1 — the svg is sized by its height and takes its
+     width from the viewBox, so leaving the height to the flex row is circular. */
+  height: 420px;
+  display: flex;
+  gap: 20px;
+}
+.scale__svg {
+  height: 100%;
+  width: auto;
+  flex: none;
+  overflow: visible;
+}
+.scale__body {
+  fill: rgba(255, 255, 255, 0.78);
+}
+.scale__body--accent {
+  fill: var(--accent);
+}
+.scale__ground {
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-width: 0.6;
+}
+.scale__tags {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.scale__tag {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--top, 0%);
+  /* pull up so the name sits level with the nose rather than hanging below it */
+  transform: translateY(-3px);
+}
+.scale__name {
+  font: 600 19px/1.2 var(--font-sans);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.scale__tag--accent .scale__name {
+  color: var(--accent);
+}
+.scale__h {
+  margin-top: 3px;
+  font: 700 26px/1.1 var(--font-sans);
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.scale__p {
+  margin-top: 3px;
+  font: 400 15px/1.35 var(--font-sans);
+  color: rgba(255, 255, 255, 0.62);
+}
+/* The two multiples — both computed, never typed. */
+.scale__ratios {
+  display: flex;
+  gap: 34px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.scale__ratio b {
+  display: block;
+  font: 700 40px/1 var(--font-sans);
+  letter-spacing: -0.03em;
+  color: var(--accent);
+}
+.scale__ratio span {
+  display: block;
+  margin-top: 6px;
+  font: 600 13px/1 var(--font-sans);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 /* --- Deck race (slides.ts `race`) -------------------------------------------
    Two elapsed spans drawn as bars on ONE shared scale (the slide's longest lane is
    full width), so "they took the same amount of time" reads as a shape before it

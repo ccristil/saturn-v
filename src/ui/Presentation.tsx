@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import type { Slide } from '../content/slides'
 import { fireConfetti, stopConfetti } from './confetti'
 import { flyby, preloadFlyby, stopFlyby } from './flyby'
+import { ScaleCompare } from './ScaleCompare'
 
 // Timeline axis color ramp: faint white at the first stop → full accent blue at the
 // last, so the line itself heats up left → right. Segments are drawn per-stop and
@@ -158,134 +159,277 @@ export function Presentation({
 
       <div
         key={index}
-        className={`deck__slide deck__slide--${slide.kind ?? 'content'}`}
+        className={[
+          'deck__slide',
+          `deck__slide--${slide.kind ?? 'content'}`,
+          slide.scale && 'deck__slide--split',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         onClick={onNext}
       >
         {slide.eyebrow && <div className="deck__eyebrow">{slide.eyebrow}</div>}
         <h1 className="deck__title">{slide.title}</h1>
-        {slide.subtitle && <p className="deck__subtitle">{slide.subtitle}</p>}
-        {slide.body?.map((p, i) => (
-          <p className="deck__body" key={i}>
-            {p}
-          </p>
-        ))}
+        {/* A `scale` slide splits below the title: the argument on the left, the
+            to-scale drawing in the right-hand column. Without one, the same content
+            runs full width. */}
+        {slide.scale ? (
+          <div className="deck__split">
+            <div className="deck__splitmain">
+          {slide.subtitle && <p className="deck__subtitle">{slide.subtitle}</p>}
+          {slide.body?.map((p, i) => (
+            <p className="deck__body" key={i}>
+              {p}
+            </p>
+          ))}
 
-        {slide.bullets && (
-          <ul className="deck__bullets">
-            {slide.bullets.map((b, i) => (
-              // Unrevealed bullets keep their space (opacity only) so nothing reflows
-              // under the presenter mid-sentence.
-              <li className={`deck__bullet${i < revealed ? ' is-shown' : ''}`} key={b.text}>
-                <span className="deck__bulletmark" aria-hidden />
-                {b.text}
-              </li>
-            ))}
-          </ul>
-        )}
+          {slide.bullets && (
+            <ul className="deck__bullets">
+              {slide.bullets.map((b, i) => (
+                // Unrevealed bullets keep their space (opacity only) so nothing reflows
+                // under the presenter mid-sentence.
+                <li className={`deck__bullet${i < revealed ? ' is-shown' : ''}`} key={b.text}>
+                  <span className="deck__bulletmark" aria-hidden />
+                  {b.text}
+                </li>
+              ))}
+            </ul>
+          )}
 
-        {slide.race && (
-          <div className="race">
-            {slide.race.lanes.map((lane, i) => (
-              // One lane per presenter step. Bars share one scale — the longest lane on
-              // the slide is full width — so two near-identical spans read as
-              // near-identical bars rather than as a coincidence of layout. Hidden
-              // lanes keep their space (opacity only), so nothing reflows mid-sentence.
-              <div
-                className={[
-                  'race__lane',
-                  i < revealed && 'is-shown',
-                  lane.accent && 'race__lane--accent',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                key={lane.name}
-                style={{ '--w': `${(lane.days / raceMax) * 100}%` } as CSSProperties}
-              >
-                <div className="race__head">
-                  <span className="race__name">{lane.name}</span>
-                  <span className="race__days">{lane.days.toLocaleString()} days</span>
-                </div>
-                <div className="race__track">
-                  <div className="race__bar" />
-                </div>
-                <div className="race__ends">
-                  <div className="race__end">
-                    <div className="race__date">{lane.from.date}</div>
-                    <div className="race__note">{lane.from.note}</div>
-                  </div>
-                  <div className="race__end race__end--to">
-                    <div className="race__date">{lane.to.date}</div>
-                    <div className="race__note">{lane.to.note}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {slide.timeline && (
-          <div className="tl">
-            <div className="tl__track">
-              {slide.timeline.map((stop, i, all) => {
-                const last = all.length - 1
-                return (
+          {slide.race && (
+            <div className="race">
+              {slide.race.lanes.map((lane, i) => (
+                // One lane per presenter step. Bars share one scale — the longest lane on
+                // the slide is full width — so two near-identical spans read as
+                // near-identical bars rather than as a coincidence of layout. Hidden
+                // lanes keep their space (opacity only), so nothing reflows mid-sentence.
                 <div
-                  className="tl__stop"
-                  key={stop.year}
-                  style={
-                    {
-                      // draw-on: the line segment, then the dot it reaches, then the label
-                      '--line-delay': `${timing!.lineStart[i]}ms`,
-                      '--line-dur': `${timing!.lineDur[i]}ms`,
-                      '--dot-delay': `${timing!.dotAt[i]}ms`,
-                      '--label-delay': `${timing!.dotAt[i] + 90}ms`,
-                      // the dot grows along the axis; the two bookends are overridden
-                      // to their own sizes in CSS (--start / --end)
-                      '--dot': `${15 + i * 3}px`,
-                      // this stop's segment runs to the next stop's color; the final
-                      // one is clipped to its left half, so it starts a step back
-                      '--c0': segColor((i === last ? i - 1 : i) / last),
-                      '--c1': segColor((i === last ? i : i + 1) / last),
-                    } as CSSProperties
-                  }
+                  className={[
+                    'race__lane',
+                    i < revealed && 'is-shown',
+                    lane.accent && 'race__lane--accent',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  key={lane.name}
+                  style={{ '--w': `${(lane.days / raceMax) * 100}%` } as CSSProperties}
                 >
-                  <div className="tl__year">{stop.year}</div>
-                  <div className="tl__mark">
-                    <span
-                      className={`tl__dot${
-                        i === 0 ? ' tl__dot--start' : i === last ? ' tl__dot--end' : ''
-                      }`}
-                    />
+                  <div className="race__head">
+                    <span className="race__name">{lane.name}</span>
+                    <span className="race__days">{lane.days.toLocaleString()} days</span>
                   </div>
-                  <div className="tl__label">{stop.label}</div>
+                  <div className="race__track">
+                    <div className="race__bar" />
+                  </div>
+                  <div className="race__ends">
+                    <div className="race__end">
+                      <div className="race__date">{lane.from.date}</div>
+                      <div className="race__note">{lane.from.note}</div>
+                    </div>
+                    <div className="race__end race__end--to">
+                      <div className="race__date">{lane.to.date}</div>
+                      <div className="race__note">{lane.to.note}</div>
+                    </div>
+                  </div>
                 </div>
-                )
-              })}
+              ))}
             </div>
-            {slide.span && (
-              <>
-                <div className="tl__span" style={{ animationDelay: `${tailDelay}ms` }} />
-                <div className="tl__spanlabel" style={{ animationDelay: `${tailDelay + 90}ms` }}>
-                  {slide.span}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+          )}
 
-        {slide.kicker && (
-          <p
-            className={[
-              'deck__kicker',
-              kickerStepped && 'deck__kicker--step',
-              kickerShown && 'is-shown',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            style={kickerStepped ? undefined : { animationDelay: `${tailDelay + 200}ms` }}
-          >
-            {slide.kicker}
-          </p>
+          {slide.timeline && (
+            <div className="tl">
+              <div className="tl__track">
+                {slide.timeline.map((stop, i, all) => {
+                  const last = all.length - 1
+                  return (
+                  <div
+                    className="tl__stop"
+                    key={stop.year}
+                    style={
+                      {
+                        // draw-on: the line segment, then the dot it reaches, then the label
+                        '--line-delay': `${timing!.lineStart[i]}ms`,
+                        '--line-dur': `${timing!.lineDur[i]}ms`,
+                        '--dot-delay': `${timing!.dotAt[i]}ms`,
+                        '--label-delay': `${timing!.dotAt[i] + 90}ms`,
+                        // the dot grows along the axis; the two bookends are overridden
+                        // to their own sizes in CSS (--start / --end)
+                        '--dot': `${15 + i * 3}px`,
+                        // this stop's segment runs to the next stop's color; the final
+                        // one is clipped to its left half, so it starts a step back
+                        '--c0': segColor((i === last ? i - 1 : i) / last),
+                        '--c1': segColor((i === last ? i : i + 1) / last),
+                      } as CSSProperties
+                    }
+                  >
+                    <div className="tl__year">{stop.year}</div>
+                    <div className="tl__mark">
+                      <span
+                        className={`tl__dot${
+                          i === 0 ? ' tl__dot--start' : i === last ? ' tl__dot--end' : ''
+                        }`}
+                      />
+                    </div>
+                    <div className="tl__label">{stop.label}</div>
+                  </div>
+                  )
+                })}
+              </div>
+              {slide.span && (
+                <>
+                  <div className="tl__span" style={{ animationDelay: `${tailDelay}ms` }} />
+                  <div className="tl__spanlabel" style={{ animationDelay: `${tailDelay + 90}ms` }}>
+                    {slide.span}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {slide.kicker && (
+            <p
+              className={[
+                'deck__kicker',
+                kickerStepped && 'deck__kicker--step',
+                kickerShown && 'is-shown',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              style={kickerStepped ? undefined : { animationDelay: `${tailDelay + 200}ms` }}
+            >
+              {slide.kicker}
+            </p>
+          )}
+            </div>
+            <ScaleCompare scale={slide.scale} />
+          </div>
+        ) : (
+          <>
+          {slide.subtitle && <p className="deck__subtitle">{slide.subtitle}</p>}
+          {slide.body?.map((p, i) => (
+            <p className="deck__body" key={i}>
+              {p}
+            </p>
+          ))}
+
+          {slide.bullets && (
+            <ul className="deck__bullets">
+              {slide.bullets.map((b, i) => (
+                // Unrevealed bullets keep their space (opacity only) so nothing reflows
+                // under the presenter mid-sentence.
+                <li className={`deck__bullet${i < revealed ? ' is-shown' : ''}`} key={b.text}>
+                  <span className="deck__bulletmark" aria-hidden />
+                  {b.text}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {slide.race && (
+            <div className="race">
+              {slide.race.lanes.map((lane, i) => (
+                // One lane per presenter step. Bars share one scale — the longest lane on
+                // the slide is full width — so two near-identical spans read as
+                // near-identical bars rather than as a coincidence of layout. Hidden
+                // lanes keep their space (opacity only), so nothing reflows mid-sentence.
+                <div
+                  className={[
+                    'race__lane',
+                    i < revealed && 'is-shown',
+                    lane.accent && 'race__lane--accent',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  key={lane.name}
+                  style={{ '--w': `${(lane.days / raceMax) * 100}%` } as CSSProperties}
+                >
+                  <div className="race__head">
+                    <span className="race__name">{lane.name}</span>
+                    <span className="race__days">{lane.days.toLocaleString()} days</span>
+                  </div>
+                  <div className="race__track">
+                    <div className="race__bar" />
+                  </div>
+                  <div className="race__ends">
+                    <div className="race__end">
+                      <div className="race__date">{lane.from.date}</div>
+                      <div className="race__note">{lane.from.note}</div>
+                    </div>
+                    <div className="race__end race__end--to">
+                      <div className="race__date">{lane.to.date}</div>
+                      <div className="race__note">{lane.to.note}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {slide.timeline && (
+            <div className="tl">
+              <div className="tl__track">
+                {slide.timeline.map((stop, i, all) => {
+                  const last = all.length - 1
+                  return (
+                  <div
+                    className="tl__stop"
+                    key={stop.year}
+                    style={
+                      {
+                        // draw-on: the line segment, then the dot it reaches, then the label
+                        '--line-delay': `${timing!.lineStart[i]}ms`,
+                        '--line-dur': `${timing!.lineDur[i]}ms`,
+                        '--dot-delay': `${timing!.dotAt[i]}ms`,
+                        '--label-delay': `${timing!.dotAt[i] + 90}ms`,
+                        // the dot grows along the axis; the two bookends are overridden
+                        // to their own sizes in CSS (--start / --end)
+                        '--dot': `${15 + i * 3}px`,
+                        // this stop's segment runs to the next stop's color; the final
+                        // one is clipped to its left half, so it starts a step back
+                        '--c0': segColor((i === last ? i - 1 : i) / last),
+                        '--c1': segColor((i === last ? i : i + 1) / last),
+                      } as CSSProperties
+                    }
+                  >
+                    <div className="tl__year">{stop.year}</div>
+                    <div className="tl__mark">
+                      <span
+                        className={`tl__dot${
+                          i === 0 ? ' tl__dot--start' : i === last ? ' tl__dot--end' : ''
+                        }`}
+                      />
+                    </div>
+                    <div className="tl__label">{stop.label}</div>
+                  </div>
+                  )
+                })}
+              </div>
+              {slide.span && (
+                <>
+                  <div className="tl__span" style={{ animationDelay: `${tailDelay}ms` }} />
+                  <div className="tl__spanlabel" style={{ animationDelay: `${tailDelay + 90}ms` }}>
+                    {slide.span}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {slide.kicker && (
+            <p
+              className={[
+                'deck__kicker',
+                kickerStepped && 'deck__kicker--step',
+                kickerShown && 'is-shown',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              style={kickerStepped ? undefined : { animationDelay: `${tailDelay + 200}ms` }}
+            >
+              {slide.kicker}
+            </p>
+          )}
+          </>
         )}
       </div>
 

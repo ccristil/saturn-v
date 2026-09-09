@@ -44,6 +44,26 @@ export type Race = {
   lanes: RaceLane[];
 };
 
+// A to-scale height comparison drawn beside the slide's main column. The silhouettes
+// are drawn in a viewBox measured in METRES and the label for each vehicle is placed
+// by its own height, so the drawing is derived from `heightM` rather than eyeballed —
+// change a number and the picture changes with it. The payload/height multiples under
+// it are computed from the first two vehicles, so they can't drift either.
+// `shape` selects a hand-authored silhouette path; those live in the UI, next to the
+// rest of the geometry, and the numbers stay here with the rest of the content.
+export type ScaleVehicle = {
+  shape: "saturn-v" | "falcon-1";
+  name: string;
+  heightM: number;
+  payloadKg: number; // to low Earth orbit
+  accent?: boolean; // drawn in accent blue — matches its lane in the race above
+};
+
+export type Scale = {
+  eyebrow?: string;
+  vehicles: ScaleVehicle[]; // tallest first
+};
+
 // A second vehicle parked beside the Saturn V on this slide, scaled by its real
 // height so the size comparison is honest. `model` is relative to BASE_URL.
 export type Compare = {
@@ -61,6 +81,7 @@ export type Slide = {
   body?: string[];
   bullets?: Bullet[]; // revealed one at a time by the presenter
   race?: Race; // two elapsed-time bars on a shared scale, revealed one per step
+  scale?: Scale; // to-scale silhouettes in a right-hand column beside the main content
   compare?: Compare; // a second vehicle beside the Saturn V, to scale
   timeline?: TimelineStop[]; // horizontal milestone axis; dots grow left → right
   span?: string; // label for the bracket drawn under the whole timeline
@@ -73,15 +94,14 @@ export const slides: Slide[] = [
     kind: "cover",
     eyebrow: "Apollo · Saturn V",
     title: "Saturn V",
-    subtitle:
-      "Placeholder cover slide — the machine that took three people to the Moon.",
+    subtitle: "The craziest thing humans ever built.",
   },
   {
     id: "sixty-six-years",
     eyebrow: "1903 → 1969",
     title: "Sixty-six years",
     subtitle:
-      "A child who stood on the sand at Kitty Hawk and watched the first powered flight was sixty-six years old when three men rode a controlled explosion to another world — and came home.",
+      "If you were 9 years old when the Wright brothers flew, you were 75 when Apollo 11 landed on the Moon.",
     timeline: [
       { year: "1903", label: "Kitty Hawk. 12 seconds, 120 feet." },
       { year: "1927", label: "Lindbergh crosses the Atlantic, alone." },
@@ -106,7 +126,10 @@ export const slides: Slide[] = [
         {
           name: "NASA",
           from: { date: "May 25, 1961", note: "JFK commits to the Moon" },
-          to: { date: "Nov 9, 1967", note: "Apollo 4 \u2014 first Saturn V flies" },
+          to: {
+            date: "Nov 9, 1967",
+            note: "Apollo 4 \u2014 first Saturn V flies",
+          },
           days: 2359,
           accent: true,
         },
@@ -120,6 +143,20 @@ export const slides: Slide[] = [
     },
     kicker:
       "And NASA's was the first Saturn V ever flown \u2014 all-up, first try. RatSat was Falcon 1's fourth attempt; the first three fell in the ocean.",
+    // Same six and a half years \u2014 but not the same machine at the end of them.
+    scale: {
+      eyebrow: "What each one built",
+      vehicles: [
+        {
+          shape: "saturn-v",
+          name: "Saturn V",
+          heightM: 110.6,
+          payloadKg: 140000,
+          accent: true,
+        },
+        { shape: "falcon-1", name: "Falcon 1", heightM: 22.25, payloadKg: 670 },
+      ],
+    },
   },
   {
     id: "why-saturn-v",
