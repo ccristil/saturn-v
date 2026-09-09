@@ -416,15 +416,24 @@ var ROUTES = [
     from: 'sealbeach', to: 'stennis', mode: 'barge',
     note: 'The S-II was too big for any aircraft. It sailed down the Baja coast, through the Panama Canal and across the Gulf aboard the barge Point Barrow — about five weeks under way.',
     path: [
+      // down the Pacific side of Baja
       [-118.0700, 33.7530], [-118.4000, 33.5000], [-117.8000, 31.5000],
       [-116.5000, 30.0000], [-115.0000, 28.3000], [-113.5000, 26.0000],
-      [-111.0000, 23.5000], [-109.6000, 22.6000], [-106.0000, 20.0000],
-      [-101.0000, 16.5000], [-95.5000, 14.5000], [-90.0000, 12.5000],
-      [-85.0000, 9.5000], [-81.5000, 7.6000], [-79.5500, 8.9000],
-      [-79.9200, 9.3600], [-79.8000, 10.6000], [-81.0000, 13.0000],
-      [-83.0000, 16.5000], [-85.0000, 19.5000], [-86.5000, 21.5000],
-      [-87.5000, 24.0000], [-88.5000, 27.0000], [-89.0000, 29.0000],
-      [-89.2000, 30.1000], [-89.6004, 30.3625]
+      [-111.0000, 23.5000], [-109.6000, 22.6000],
+      // across to Central America, staying off the Mexican and Costa Rican coasts
+      [-106.0000, 20.0000], [-101.0000, 16.5000], [-95.5000, 14.5000],
+      [-90.5000, 12.4000], [-86.5000, 10.2000], [-83.5000, 7.9000],
+      // SOUTH of the Azuero Peninsula. Cutting this corner runs the ship aground —
+      // the peninsula reaches down to ~7.2°N and sticks out a long way.
+      [-80.6000, 6.6000], [-79.3000, 7.5000],
+      // the canal itself: up the bay to Balboa, through the cut, out at Colón
+      [-79.5200, 8.7000], [-79.6000, 9.0500], [-79.8000, 9.2500], [-79.9200, 9.4200],
+      // north through the Caribbean and the Yucatán Channel into the Gulf
+      [-79.9000, 10.6000], [-80.8000, 12.6000], [-82.5000, 15.8000],
+      [-84.5000, 19.0000], [-86.2000, 21.9000], [-87.5000, 24.0000],
+      // and in behind the barrier islands to the test facility
+      [-88.3000, 27.0000], [-88.8000, 29.3000], [-88.9000, 30.1500],
+      [-89.3000, 30.2200], [-89.5800, 30.2600], [-89.6004, 30.3625]
     ]
   },
   {
@@ -474,6 +483,58 @@ var byId = {};
 SITES.forEach(function (s) { byId[s.id] = s; });
 
 var lonLat = ol.proj.fromLonLat;
+
+/* Draw a sea route as a fluid curve through its waypoints rather than a chain of
+   straight segments — the waypoints are where the ship was, not the shape of its track.
+
+   Centripetal Catmull-Rom (the exponent below is alpha/2, alpha = 0.5), deliberately
+   not the uniform variant: uniform parameterisation overshoots and can cusp at tight
+   corners, and a corner here is a headland — an overshoot puts the ship through land.
+   Centripetal is guaranteed not to cusp or self-intersect, and hugs the waypoints
+   closely enough that a hand-placed coastal path stays offshore.
+
+   The curve passes through every waypoint, and the endpoints are duplicated so it
+   starts and finishes exactly at the dock rather than easing in from nowhere. */
+function smoothPath(pts, perSegment) {
+  if (pts.length < 3) return pts.slice();
+  var p = [pts[0]].concat(pts, [pts[pts.length - 1]]);
+  var out = [];
+  for (var i = 1; i < p.length - 2; i++) {
+    var p0 = p[i - 1], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2];
+    // knot spacing by the square root of chord length — that's what makes it centripetal
+    var t0 = 0;
+    var t1 = t0 + knot(p0, p1);
+    var t2 = t1 + knot(p1, p2);
+    var t3 = t2 + knot(p2, p3);
+    for (var s = 0; s < perSegment; s++) {
+      out.push(barryGoldman(p0, p1, p2, p3, t0, t1, t2, t3, t1 + (t2 - t1) * (s / perSegment)));
+    }
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+
+// Coincident waypoints would give a zero knot interval and divide by zero downstream;
+// floor it rather than trusting the data to never repeat a point.
+function knot(a, b) {
+  return Math.max(Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1])), 1e-6);
+}
+
+// Barry–Goldman pyramidal evaluation: three nested linear interpolations. Written out
+// rather than expanded into a cubic because this form takes the non-uniform knots
+// directly, which is the whole point of using centripetal spacing.
+function barryGoldman(p0, p1, p2, p3, t0, t1, t2, t3, t) {
+  var a1 = mix(p0, p1, (t - t0) / (t1 - t0));
+  var a2 = mix(p1, p2, (t - t1) / (t2 - t1));
+  var a3 = mix(p2, p3, (t - t2) / (t3 - t2));
+  var b1 = mix(a1, a2, (t - t0) / (t2 - t0));
+  var b2 = mix(a2, a3, (t - t1) / (t3 - t1));
+  return mix(b1, b2, (t - t1) / (t2 - t1));
+}
+
+function mix(a, b, k) {
+  return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+}
 
 /* A shallow great-circle-ish arc for flights: bow the straight line out
    perpendicular to itself so overlapping routes to KSC stay tellable apart, and so
@@ -526,7 +587,9 @@ var travelSource = new ol.source.Vector();  // the moving dot / plane
 ROUTES.forEach(function (r, i) {
   var a = byId[r.from], b = byId[r.to];
   if (!a || !b) { console.warn('route skipped, unknown site:', r); return; }
-  var coords = r.path ? r.path.map(function (p) { return lonLat(p); }) : arcPath(a, b);
+  var coords = r.path
+    ? smoothPath(r.path.map(function (p) { return lonLat(p); }), 14)
+    : arcPath(a, b);
   var f = new ol.Feature({ geometry: new ol.geom.LineString(coords) });
   f.setProperties({ kind: 'route', route: r, from: a, to: b, key: r.from + '>' + r.to + ':' + i });
   routeSource.addFeature(f);
