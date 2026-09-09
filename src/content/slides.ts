@@ -78,7 +78,7 @@ export type Slide = {
   eyebrow?: string; // small mono label above the title
   title: string;
   subtitle?: string;
-  image?: { src: string; alt: string }; // photo alongside the slide text; `src` is relative to BASE_URL
+  image?: { src: string; alt: string; caption?: string }; // photo alongside the slide text; `src` is relative to BASE_URL
   body?: string[];
   bullets?: Bullet[]; // revealed one at a time by the presenter
   // A trailing presenter beat that changes nothing on screen: its only job is to
@@ -104,6 +104,7 @@ export const slides: Slide[] = [
     image: {
       src: "img/saturn-v-apollo-4-the-night-before-launch-november-8-1967-v0-9hN-jgxuNa2UWHKDnry8iSaSl65IEKYD0e-TwlTjchI.webp",
       alt: "Apollo 4, the night before launch — November 8, 1967",
+      caption: "Saturn V, the night before the Apollo 4 launch — November 8, 1967",
     },
   },
   {
@@ -174,6 +175,10 @@ export const slides: Slide[] = [
     title: "Why the Saturn V",
     subtitle:
       "Three reasons this machine is still worth half an hour of your afternoon.",
+    image: {
+      src: "img/saturn-v-in-flight.jpg",
+      alt: "A Saturn V climbing away from the pad, first stage burning",
+    },
     // DRAFT COPY — rewrite these two; the third is the payoff and carries the cue.
     bullets: [
       { text: "It was built in the 60s." },

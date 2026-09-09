@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { Slide } from '../content/slides'
 import { slideSteps } from '../content/slides'
@@ -63,6 +63,16 @@ export function Presentation({
 }) {
   const slide = slides[index]
   const atStart = index === 0 && revealed === 0
+
+  // The photo's rendered width, which the slide's right padding clears (see
+  // .deck__slide--has-image). Measured rather than assumed: the deck's photos aren't
+  // all the same shape, and a fixed column would crop the portrait ones or strand a
+  // third of the slide beside the landscape ones. A cached image can already be
+  // complete when the ref lands, so measure there as well as on load.
+  const [imgW, setImgW] = useState(0)
+  const measureImage = (el: HTMLImageElement | null) => {
+    if (el?.complete && el.naturalWidth) setImgW(el.getBoundingClientRect().width)
+  }
 
   // Bullet payoff cues — sound and confetti. Audio is preloaded on arrival so it lands
   // on the beat, and both fire only when a bullet is revealed going forward: never on
@@ -207,10 +217,22 @@ export function Presentation({
         ]
           .filter(Boolean)
           .join(' ')}
+        style={slide.image && imgW ? ({ '--img-w': `${imgW}px` } as CSSProperties) : undefined}
         onClick={onNext}
       >
         {slide.image && (
-          <img className="deck__image" src={import.meta.env.BASE_URL + slide.image.src} alt={slide.image.alt} />
+          <figure className="deck__imagewrap">
+            <img
+              className="deck__image"
+              ref={measureImage}
+              onLoad={(e) => setImgW(e.currentTarget.getBoundingClientRect().width)}
+              src={import.meta.env.BASE_URL + slide.image.src}
+              alt={slide.image.alt}
+            />
+            {slide.image.caption && (
+              <figcaption className="deck__imagecaption">{slide.image.caption}</figcaption>
+            )}
+          </figure>
         )}
         {slide.eyebrow && <div className="deck__eyebrow">{slide.eyebrow}</div>}
         <h1 className="deck__title">{slide.title}</h1>
