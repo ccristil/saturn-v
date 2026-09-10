@@ -255,11 +255,72 @@ canvas {
   transform: scale(1.35);
 }
 
-/* --- HUD buttons (top-left stack) — LeaderFactor light-glass pills on dark --- */
-.hud-btn {
+/* --- HUD menu (top-left): one Menu pill; the controls roll down from under it --- */
+.hud {
   z-index: 20;
   position: fixed;
+  top: 24px;
   left: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.hud-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+/* chevron: points down while closed, flips up once the menu is open */
+.hud-toggle__icon {
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform var(--transition), margin var(--transition);
+}
+.hud--open .hud-toggle__icon {
+  margin-top: 4px;
+  transform: rotate(-135deg);
+}
+.hud__items {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  /* Closed = unclickable and out of the tab order, but only once the roll-up has
+     finished playing — hence the delayed visibility flip. */
+  visibility: hidden;
+  transition: visibility 0s linear 0.3s;
+}
+.hud--open .hud__items {
+  visibility: visible;
+  transition-delay: 0s;
+}
+.hud__items .hud-btn {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition-property: opacity, transform, background, border-color, color, filter;
+  transition-duration: 0.18s;
+  transition-timing-function: ease;
+}
+.hud--open .hud__items .hud-btn {
+  opacity: 1;
+  transform: none;
+}
+/* each control lands a beat after the one above it (the stagger only on the roll, never
+   on hover) */
+.hud--open .hud__items .hud-btn:nth-child(2) {
+  transition-delay: 45ms, 45ms, 0s, 0s, 0s, 0s;
+}
+.hud--open .hud__items .hud-btn:nth-child(3) {
+  transition-delay: 90ms, 90ms, 0s, 0s, 0s, 0s;
+}
+
+/* --- HUD buttons — LeaderFactor light-glass pills on dark --- */
+.hud-btn {
   font: 600 15px/1 var(--font-sans);
   padding: 13px 22px;
   color: var(--ink);
@@ -275,15 +336,6 @@ canvas {
 .hud-btn:hover {
   background: rgba(255, 255, 255, 0.26);
   border-color: rgba(255, 255, 255, 0.65);
-}
-.present-btn {
-  top: 24px;
-}
-.explode-btn {
-  top: 78px;
-}
-.compare-btn {
-  top: 132px;
 }
 .explode-btn.is-active,
 .compare-btn.is-active {

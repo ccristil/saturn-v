@@ -65,6 +65,9 @@ export default function App() {
   const [comparing, setComparing] = useState(false)
   const [libertyUp, setLibertyUp] = useState(false)
   const [libertyMoving, setLibertyMoving] = useState(false)
+  // The HUD controls stay tucked behind one Menu pill until it's clicked. Keyboard
+  // shortcuts (X, C, arrows) work either way — the menu only hides the buttons.
+  const [menuOpen, setMenuOpen] = useState(false)
 
   // Warm every comparison model at startup: mounting one cold, mid-talk, would suspend
   // and blank the scene for as long as the download takes.
@@ -104,6 +107,7 @@ export default function App() {
     setComparing(false)
     setLibertyUp(false)
     setLibertyMoving(false)
+    setMenuOpen(false) // the deck comes back to a tidy HUD
     setSlideIndex(0)
     setRevealed(0)
   }
@@ -347,23 +351,33 @@ export default function App() {
       {slideIndex === null && <Progress hotspots={hotspots} activeIndex={activeIndex} />}
 
       {slideIndex === null && (
-        <>
-          <button className="hud-btn present-btn" onClick={startPresentation}>
-            Start Presentation
-          </button>
+        <nav className={menuOpen ? 'hud hud--open' : 'hud'}>
           <button
-            className={exploded ? 'hud-btn explode-btn is-active' : 'hud-btn explode-btn'}
-            onClick={toggleExplode}
+            className="hud-btn hud-toggle"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((v) => !v)}
           >
-            {exploded ? 'Reassemble' : 'Explode stages'}
+            <span className="hud-toggle__icon" aria-hidden="true" />
+            Menu
           </button>
-          <button
-            className={comparing ? 'hud-btn compare-btn is-active' : 'hud-btn compare-btn'}
-            onClick={toggleCompare}
-          >
-            Compare
-          </button>
-        </>
+          <div className="hud__items">
+            <button className="hud-btn present-btn" onClick={startPresentation}>
+              Start Presentation
+            </button>
+            <button
+              className={exploded ? 'hud-btn explode-btn is-active' : 'hud-btn explode-btn'}
+              onClick={toggleExplode}
+            >
+              {exploded ? 'Reassemble' : 'Explode stages'}
+            </button>
+            <button
+              className={comparing ? 'hud-btn compare-btn is-active' : 'hud-btn compare-btn'}
+              onClick={toggleCompare}
+            >
+              Compare
+            </button>
+          </div>
+        </nav>
       )}
 
       <div className={slideIndex !== null ? 'credit credit--deck' : 'credit'}>
