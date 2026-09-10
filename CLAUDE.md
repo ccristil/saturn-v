@@ -131,7 +131,7 @@ src/
     materials.ts               # metallic look: engines/metal rings reflect the <Environment>, painted body kept satin (not glossy)
     enginedetail.ts            # corrugated tube-wall ribs on the F-1 nozzles (rings hugging each engine's measured bell profile)
     Callout.tsx                # one billboarded leader line + numbered tag (always faces camera)
-    Callouts.tsx               # resolves each hotspot's `anchor` to a real node position; renders Callouts
+    Callouts.tsx               # resolves each hotspot's `anchor` to a real node position — found once, re-measured every frame so tags follow moving stages (they mount the instant a reassemble starts, stages still exploded); renders Callouts
     Compare.tsx                # parks a second vehicle beside the Saturn V, scaled by real height (measures the stack *as assembled* — Stack stores `userData.assembledBox` — so opening it mid-reassembly can't mis-scale). Optional slide in/out (`enterFrom` / `present` / `onSettled`) and height `labels` in feet
     Dimension.tsx              # engineering-drawing height line + "363 ft" label; its lines sit on layer 1 so the contact-shadow pass never draws them
     livery.ts                  # repaints a guest into its real colours (the N1 ships all-white; olive below the shroud line, white above)
