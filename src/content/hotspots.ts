@@ -91,8 +91,7 @@ export const hotspots: Hotspot[] = [
     },
     body: [
       "HUGE FORCE. These engines each generate 1.5 million pounds of thrust, and they burn through 3 tons of propellant every second. So all 5 engines could suspend 1,000 African elephants or 25 blue whales in the air at once. ",
-      "PLACEHOLDER. A second paragraph to prove multi-paragraph layout, spacing, and 18px legibility from across a room hold up on the projector.",
-      "PLACEHOLDER. A short third beat to land the story before the presenter advances to the next hotspot.",
+      "THEY MOVED. The 4 outer engines gimbal (swivel) to steer the rocket, while the center engine is fixed. The gimbaling engines move the whole 6.5 million pound rocket by just a few degrees, but that’s enough to keep it on course.",
     ],
     specs: [
       { label: "Thrust, each", value: "1.5M lbf" },
