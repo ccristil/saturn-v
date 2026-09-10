@@ -98,4 +98,128 @@ export const hotspots: Hotspot[] = [
     // engines) lit, dim the rest. Others: S-II, S-IVB, Interstage, Instrument_Unit.
     isolate: ["S-IC"],
   },
+
+  // ---------------------------------------------------------------------------
+  // 02–05 walk the vehicle bottom → top, so the camera physically climbs the
+  // stack as the talk progresses: power → mass → precision → the humans.
+  // Camera poses are derived from the measured node extents and then verified on
+  // screen — they are NOT hand-guessed. At fov 40 the visible height at distance
+  // d is 0.728·d, so a feature H units tall fills ~65% of the frame at d ≈ 2.1·H.
+  //
+  // The catch: frame a stage's EXPOSED extent, not its node bbox. Each stage's
+  // ends are swallowed by the shroud above/below it — S-II measures 41→65.9 but
+  // only 47.3→65.9 is visible, and S-IVB measures 63.9→81.8 with only 71.4→81.8
+  // showing. Framing the bbox leaves the lit stage a sliver in the middle.
+  // Re-capture with PoseLogger (`p`) if these are retuned.
+  //
+  // BODY COPY IS PLACEHOLDER and SPECS ARE DRAFT — presenter writes/verifies.
+  // ---------------------------------------------------------------------------
+
+  {
+    id: "s2-hydrogen",
+    order: 2,
+    tag: "02",
+    title: "PLACEHOLDER — the mass problem",
+    subtitle: "Placeholder hook — every kilogram was a negotiation.",
+    target: [0, 53, 0],
+    anchor: "S-II", // second-stage body, measured center y ≈ 53.4
+    // Centred on the exposed 47.3→65.9, not the 41→65.9 bbox.
+    camera: {
+      position: [15, 58, 36],
+      lookAt: [0, 57, 0],
+    },
+    body: [
+      "PLACEHOLDER. The second stage flew on liquid hydrogen, which is light on paper and miserable in practice — it boils at 20 K and it is bulky, so the tank has to be huge and it has to be insulated.",
+      "PLACEHOLDER. The common bulkhead: one shared wall between the LOX and LH2 tanks instead of two walls and the gap between them. Presenter writes the real story here.",
+    ],
+    specs: [
+      { label: "Engines", value: "5 × J-2" },
+      { label: "Propellant", value: "LH2 / LOX" },
+      { label: "Burn time", value: "~6 min" },
+    ],
+    isolate: ["S-II"],
+  },
+
+  {
+    id: "s4b-restart",
+    order: 3,
+    tag: "03",
+    title: "PLACEHOLDER — the restart",
+    subtitle: "Placeholder hook — one engine has to light twice.",
+    target: [0, 73, 0],
+    // The S-IVB's own engine (J2005) sits at y 63.9–67.2, tucked under the
+    // S-II_Top shroud — a leader line there points at a covered region. Anchor
+    // the stage body instead.
+    anchor: "S-IVB",
+    // Centred on the exposed 71.4→81.8, not the 63.9→81.8 bbox.
+    camera: {
+      position: [13, 78, 33],
+      lookAt: [0, 76, 0],
+    },
+    body: [
+      "PLACEHOLDER. Everything below this fires once, on a pad, with the whole world watching. This stage has to burn to reach orbit, shut down, coast, and then relight — cold, hours later, on the far side of a checklist.",
+      "PLACEHOLDER. That second burn is translunar injection. There is no second attempt. Presenter writes the real story here.",
+    ],
+    specs: [
+      { label: "Engines", value: "1 × J-2" },
+      { label: "Burns", value: "2 (orbit, then TLI)" },
+      { label: "Restart", value: "In vacuum" },
+    ],
+    isolate: ["S-IVB"],
+  },
+
+  {
+    id: "instrument-unit",
+    order: 4,
+    tag: "04",
+    title: "PLACEHOLDER — the computer",
+    subtitle: "Placeholder hook — the whole brain is a three-foot hoop.",
+    target: [0, 83, 0],
+    // NOT "Instrument_Unit": nosecone.ts parents the rebuilt Spacecraft_Top to
+    // that node, so a Box3 over it swallows the whole spacecraft and the anchor
+    // lands at y ≈ 100 — right on top of hotspot 05's tag. The IU's own leaf
+    // mesh has no children, so it resolves to the real ring at y ≈ 82.5.
+    anchor: "Instrument_Unit_Metal_0",
+    camera: {
+      position: [25, 85, 61],
+      lookAt: [0, 83, 0],
+    },
+    body: [
+      "PLACEHOLDER. The guidance ring that flew the vehicle: IBM built it, it is about three feet tall, and it wraps the top of the third stage.",
+      "PLACEHOLDER. Triple-redundant, and with less memory than the tab you have open. Presenter writes the real story here.",
+    ],
+    specs: [
+      { label: "Built by", value: "IBM" },
+      { label: "Height", value: "~3 ft" },
+      { label: "Diameter", value: "~21.7 ft" },
+    ],
+    // Same reason: isolating "Instrument_Unit" keeps its whole subtree lit,
+    // which now includes the spacecraft. Naming the mesh lights the ring alone.
+    isolate: ["Instrument_Unit_Metal_0"],
+  },
+
+  {
+    id: "escape-tower",
+    order: 5,
+    tag: "05",
+    title: "PLACEHOLDER — the part you hope never fires",
+    subtitle: "Placeholder hook — thrown away on every good flight.",
+    target: [0, 102, 0],
+    // The rebuilt spacecraft + launch escape system (nosecone.ts), y ≈ 83 → 117.
+    anchor: "Spacecraft_Top",
+    camera: {
+      position: [30, 104, 73],
+      lookAt: [0, 102, 0],
+    },
+    body: [
+      "PLACEHOLDER. The lattice tower at the very top is a solid rocket whose only job is to rip the crew capsule off the stack if the vehicle below it fails.",
+      "PLACEHOLDER. On every successful flight it is jettisoned unused. Insurance as a design discipline. Presenter writes the real story here.",
+    ],
+    specs: [
+      { label: "Tower height", value: "~33 ft" },
+      { label: "Escape motor", value: "Solid, ~147k lbf" },
+      { label: "Used in flight", value: "Never" },
+    ],
+    isolate: ["Spacecraft_Top"],
+  },
 ];
