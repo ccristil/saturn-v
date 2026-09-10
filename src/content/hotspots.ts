@@ -59,6 +59,23 @@ export const COMPARE_CAMERA = {
   lookAt: [-58, 56, 0] as [number, number, number],
 };
 
+// The HUD's "Compare" button (or `C`): the Statue of Liberty slides in from the right
+// and parks beside the Saturn V, scaled by real height (Compare.tsx measures the live
+// stack, so nothing here is a size guess), with both heights marked in feet.
+// `heightM` is the copper statue alone, heel to torch — the model has no pedestal.
+export const LIBERTY_COMPARE = {
+  model: "models/liberty.glb",
+  heightM: 46.05,
+  x: 30, // where it parks: right of the Saturn V's axis, scene units
+  enterFrom: 150, // starts this far further right — off screen — and slides in
+  names: { saturn: "Saturn V", guest: "Statue of Liberty" },
+  credit: "“Statue of Liberty” by Maurice Svay · CC BY 4.0",
+  camera: {
+    position: [60, 64, 205] as [number, number, number],
+    lookAt: [12, 62, 0] as [number, number, number],
+  },
+};
+
 export const hotspots: Hotspot[] = [
   {
     id: "f1-engines",

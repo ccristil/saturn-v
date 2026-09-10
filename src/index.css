@@ -282,14 +282,52 @@ canvas {
 .explode-btn {
   top: 78px;
 }
-.explode-btn.is-active {
+.compare-btn {
+  top: 132px;
+}
+.explode-btn.is-active,
+.compare-btn.is-active {
   background: var(--accent-fill);
   border-color: transparent;
   color: #fff;
 }
-.explode-btn.is-active:hover {
+.explode-btn.is-active:hover,
+.compare-btn.is-active:hover {
   background: var(--accent-fill);
   filter: brightness(1.12);
+}
+
+/* --- Height dimensions (Compare) — a label standing on each dimension line's top tick --- */
+.dim-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  /* drei anchors the top-left corner on the tick: centre it, then lift it clear */
+  transform: translate(-50%, calc(-100% - 14px));
+  white-space: nowrap;
+  animation: dim-label-in 0.4s ease both;
+}
+.dim-label__name {
+  font: 600 18px/1 var(--font-sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.dim-label__value {
+  font: 700 34px/1 var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.dim-label__unit {
+  margin-left: 5px;
+  font-size: 22px;
+  font-weight: 600;
+}
+@keyframes dim-label-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* --- Model attribution (CC BY, bottom-left) --- */

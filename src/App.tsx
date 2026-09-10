@@ -20,6 +20,7 @@ import {
   COMPARE_CAMERA,
   MODEL_CREDIT,
   COMPARE_CREDIT,
+  LIBERTY_COMPARE,
 } from './content/hotspots'
 import { slides, slideSteps } from './content/slides'
 
@@ -58,20 +59,51 @@ export default function App() {
   const [revealed, setRevealed] = useState(0)
   const stepCount = (i: number) => slideSteps(slides[i]).count
 
-  // Warm every slide's comparison model at startup: mounting one cold, mid-talk,
-  // would suspend and blank the scene for as long as the download takes.
+  // The HUD's "Compare": the Statue of Liberty slides in beside the Saturn V, to scale.
+  // `comparing` is what the presenter asked for; the statue stays mounted (`libertyUp`)
+  // until it has slid back out, and `libertyMoving` covers the slide in either direction.
+  const [comparing, setComparing] = useState(false)
+  const [libertyUp, setLibertyUp] = useState(false)
+  const [libertyMoving, setLibertyMoving] = useState(false)
+
+  // Warm every comparison model at startup: mounting one cold, mid-talk, would suspend
+  // and blank the scene for as long as the download takes.
   useEffect(() => {
     for (const s of slides) if (s.compare) preloadCompare(s.compare.model)
+    preloadCompare(LIBERTY_COMPARE.model)
   }, [])
+
+  const closeCompare = () => {
+    if (!comparing) return
+    setComparing(false)
+    setLibertyMoving(true) // Compare reports back once it has slid out (onLibertySettled)
+  }
+  const toggleCompare = () => {
+    if (comparing) return closeCompare()
+    setExploded(false) // compare, explode and hotspots are mutually exclusive
+    setActiveIndex(null)
+    setComparing(true)
+    setLibertyUp(true)
+    setLibertyMoving(true)
+  }
+  const onLibertySettled = (parked: boolean) => {
+    setLibertyMoving(false)
+    if (!parked) setLibertyUp(false)
+  }
 
   const toggleExplode = () => {
     setExploded((v) => !v)
     setActiveIndex(null) // explode and hotspots are mutually exclusive
+    closeCompare()
   }
 
   const startPresentation = () => {
     setExploded(false)
     setActiveIndex(null)
+    // the deck covers the scene at once, so the statue goes now rather than sliding out
+    setComparing(false)
+    setLibertyUp(false)
+    setLibertyMoving(false)
     setSlideIndex(0)
     setRevealed(0)
   }
@@ -145,14 +177,24 @@ export default function App() {
       if (e.key === 'Escape') {
         setExploded(false)
         setActiveIndex(null)
+        closeCompare()
         return
       }
       if (e.key === 'x' || e.key === 'X') {
         setExploded((v) => !v)
         setActiveIndex(null)
+        closeCompare()
+        return
+      }
+      if (e.key === 'c' || e.key === 'C') {
+        toggleCompare()
         return
       }
       if (exploded) return // stage nav is disabled while exploded
+      // Stepping to a stage ends the comparison rather than being ignored — arrow nav
+      // always does something.
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || (e.key >= '1' && e.key <= '9'))
+        closeCompare()
       if (e.key === 'ArrowRight')
         setActiveIndex((i) => Math.min((i ?? -1) + 1, hotspots.length - 1))
       else if (e.key === 'ArrowLeft')
@@ -165,7 +207,7 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exploded, slideIndex, deckExiting, revealed])
+  }, [exploded, slideIndex, deckExiting, revealed, comparing])
 
   const activeHotspot = activeIndex === null ? null : hotspots[activeIndex]
 
@@ -187,16 +229,19 @@ export default function App() {
   // while that slide is up — the handoff drops it as the deck dissolves, so the wide
   // shot the presenter lands on is the Saturn V alone.
   const compare = slideIndex !== null && !deckExiting ? slides[slideIndex]?.compare : undefined
+  const deckGuestX = compare?.x ?? -26
 
   const pose: CamPose = exploded
     ? EXPLODE_CAMERA
     : compare
       ? COMPARE_CAMERA
-      : heroPreview
-        ? HERO_CAMERA
-        : activeHotspot === null
-          ? HOME_CAMERA
-          : { position: activeHotspot.camera.position, lookAt: activeHotspot.camera.lookAt }
+      : comparing
+        ? LIBERTY_COMPARE.camera
+        : heroPreview
+          ? HERO_CAMERA
+          : activeHotspot === null
+            ? HOME_CAMERA
+            : { position: activeHotspot.camera.position, lookAt: activeHotspot.camera.lookAt }
 
   return (
     <>
@@ -243,13 +288,30 @@ export default function App() {
               <Compare
                 model={compare.model}
                 heightM={compare.heightM}
-                x={compare.x ?? -26}
+                x={deckGuestX}
                 spin={heroPreview}
               />
             </Suspense>
           )}
-          <Ground bakeKey={compare?.model ?? ''} />
-          {!exploded && slideIndex === null && (
+          {libertyUp && (
+            <Suspense fallback={null}>
+              <Compare
+                model={LIBERTY_COMPARE.model}
+                heightM={LIBERTY_COMPARE.heightM}
+                x={LIBERTY_COMPARE.x}
+                enterFrom={LIBERTY_COMPARE.enterFrom}
+                present={comparing}
+                onSettled={onLibertySettled}
+                labels={LIBERTY_COMPARE.names}
+              />
+            </Suspense>
+          )}
+          <Ground
+            bakeKey={compare?.model ?? (libertyUp ? LIBERTY_COMPARE.model : '')}
+            guestX={compare ? deckGuestX : LIBERTY_COMPARE.x}
+            live={libertyMoving}
+          />
+          {!exploded && !comparing && slideIndex === null && (
             <Callouts
               activeIndex={activeIndex}
               flip={activeIndex !== null}
@@ -295,12 +357,19 @@ export default function App() {
           >
             {exploded ? 'Reassemble' : 'Explode stages'}
           </button>
+          <button
+            className={comparing ? 'hud-btn compare-btn is-active' : 'hud-btn compare-btn'}
+            onClick={toggleCompare}
+          >
+            Compare
+          </button>
         </>
       )}
 
       <div className={slideIndex !== null ? 'credit credit--deck' : 'credit'}>
         {MODEL_CREDIT}
         {compare && <span className="credit__line">{COMPARE_CREDIT}</span>}
+        {libertyUp && <span className="credit__line">{LIBERTY_COMPARE.credit}</span>}
       </div>
 
       {slideIndex !== null && (

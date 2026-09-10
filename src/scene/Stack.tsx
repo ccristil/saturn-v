@@ -78,6 +78,9 @@ export function Stack({
     addWeathering(scene) // base scorch + body grime streaks (launch-day look)
     addEngineDetail(scene) // corrugated tube-wall ribs on the F-1 nozzles
     applyMetallicLook(scene) // metal reflects the environment; painted body stays satin
+    // The vehicle's bounds as assembled, before an explode can move a stage. Compare
+    // scales its guest against these, so a comparison opened mid-reassembly stays true.
+    scene.userData.assembledBox = new Box3().setFromObject(scene)
     moves.current = computeStageMoves(scene)
   }, [scene])
 

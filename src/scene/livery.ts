@@ -54,9 +54,32 @@ function paintN1(root: Object3D): void {
   })
 }
 
+// The Statue of Liberty scan ships 0.9 metallic. The studio environment is a few lit
+// panels, not a sky, so a surface that metallic mostly mirrors the navy void and renders
+// near black. The real statue's skin is verdigris — a mineral crust over the copper, not
+// bare metal — so take it back to a dull, mostly diffuse finish. The scan's texture is
+// grey (it carries the folds and shading, not the colour), so tint it: the texture is
+// multiplied by the patina green. Its one material is used by nothing else, so no clone.
+const LIBERTY_PATINA = '#a9dcc6' // pale verdigris; multiplies the grey scan
+
+function dullLiberty(root: Object3D): void {
+  root.traverse((o) => {
+    const mesh = o as Mesh
+    if (!mesh.isMesh) return
+    for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+      if (!(m instanceof MeshStandardMaterial)) continue
+      m.color.set(LIBERTY_PATINA)
+      m.metalness = 0.15
+      m.roughness = 0.75
+      m.needsUpdate = true
+    }
+  })
+}
+
 // Runs once per loaded model (useGLTF caches the scene, so guard it).
 export function applyLivery(model: string, root: Object3D): void {
   if (root.userData.__liveryPainted) return
   if (/n1/i.test(model)) paintN1(root)
+  else if (/liberty/i.test(model)) dullLiberty(root)
   root.userData.__liveryPainted = true
 }
