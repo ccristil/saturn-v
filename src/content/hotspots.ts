@@ -82,12 +82,15 @@ export const LIBERTY_COMPARE = {
 export const SPACECRAFT_VIEW = {
   model: "models/lunar-module.glb",
   credit: "“Apollo 11 Lunar Module” by CMFDesign · CC BY 4.0",
-  position: [26, 100, 0] as [number, number, number], // middle of the docked stack
-  rotation: [0, -0.45, 1.35] as [number, number, number], // lays the long axis near-horizontal
+  position: [17, 103, 0] as [number, number, number], // middle of the docked stack
+  rotation: [0, 0.3, 1.3] as [number, number, number], // long axis near-horizontal, turned into the key light
   rollSpeed: 0.1, // radians per second — about a turn a minute
+  // Fills about half the frame and stays in it through the whole roll at 16:10, 16:9 and
+  // 4:3, clear of the Menu pills and the credit. If re-tuned, keep the rocket's axis at
+  // least 170 px from the left edge, or the escape tower runs under the Menu.
   camera: {
-    position: [34, 106, 46] as [number, number, number],
-    lookAt: [18, 100, 0] as [number, number, number],
+    position: [14.5, 106, 31] as [number, number, number],
+    lookAt: [10.5, 102, 0] as [number, number, number],
   },
 };
 

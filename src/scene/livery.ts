@@ -80,14 +80,22 @@ function dullLiberty(root: Object3D): void {
 // turns the gold foil wrap on the descent stage into mustard paint. Give the foil a
 // metallic sheen to catch the studio lights and take the rest down to satin. Its
 // materials are used by nothing else, so no clone.
+//
+// Its colours are also wrong on arrival: the exporter wrote each one's sRGB value into
+// glTF's linear baseColorFactor, so three.js shows them far too light — Eagle's black
+// panels come out mid-grey, the foil lemon, the flag pink. Each material is named for its
+// intended colour (color_14789940 = #e1ad34), which is how that was checked. Convert once.
 const LM_FOIL = /^color_14789940$/ // the gold Kapton wrap
 
 function sheenLM(root: Object3D): void {
+  const done = new Set<MeshStandardMaterial>() // a material on two meshes converts once
   root.traverse((o) => {
     const mesh = o as Mesh
     if (!mesh.isMesh) return
     for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
-      if (!(m instanceof MeshStandardMaterial)) continue
+      if (!(m instanceof MeshStandardMaterial) || done.has(m)) continue
+      done.add(m)
+      m.color.convertSRGBToLinear()
       const foil = LM_FOIL.test(m.name)
       m.metalness = foil ? 0.6 : 0.15
       m.roughness = foil ? 0.4 : 0.6
