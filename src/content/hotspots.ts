@@ -2,6 +2,7 @@ export type Hotspot = {
   id: string;
   order: number; // 1-indexed, drives keyboard nav
   tag: string; // "01" — shown in the callout marker
+  kind: "stage" | "spacecraft"; // bracket colour: orange for a launch-vehicle stage, blue for the spacecraft on top
   title: string;
   subtitle: string; // one-line hook
   bracket: string[]; // model nodes the stage's bracket spans — it covers the union of their bounds
@@ -178,6 +179,7 @@ export const hotspots: Hotspot[] = [
     id: "f1-engines",
     order: 1,
     tag: "01",
+    kind: "stage",
     title: "First Stage (S-IC)",
     subtitle: "Five F-1 engines, one very hard problem.",
     bracket: ["S-IC"], // the whole first stage, engine bells to forward skirt
@@ -217,8 +219,8 @@ export const hotspots: Hotspot[] = [
   },
 
   // ---------------------------------------------------------------------------
-  // 01–03 are the three stages, bottom → top, so the camera physically climbs
-  // the stack as the talk progresses.
+  // 01–03 are the three stages and 04 the spacecraft riding on them, bottom →
+  // top, so the camera physically climbs the stack as the talk progresses.
   // Camera poses are derived from the measured node extents and then verified on
   // screen — they are NOT hand-guessed. At fov 40 the visible height at distance
   // d is 0.728·d, so a feature H units tall fills ~65% of the frame at d ≈ 2.1·H.
@@ -236,6 +238,7 @@ export const hotspots: Hotspot[] = [
     id: "s2-hydrogen",
     order: 2,
     tag: "02",
+    kind: "stage",
     title: "Second Stage (S-II)",
     subtitle: "Placeholder hook — every kilogram was a negotiation.",
     // The interstage below it (dropped ~30 s into the S-II burn) and the one above
@@ -281,6 +284,7 @@ export const hotspots: Hotspot[] = [
     id: "s4b-restart",
     order: 3,
     tag: "03",
+    kind: "stage",
     title: "Stage 3 (S-IVB)",
     subtitle: "Placeholder hook — one engine has to light twice.",
     // The stage plus the Instrument Unit ring that rides on top of it. Name the
@@ -313,5 +317,37 @@ export const hotspots: Hotspot[] = [
       },
     ],
     isolate: ["S-IVB"],
+  },
+
+  {
+    id: "spacecraft",
+    order: 4,
+    tag: "04",
+    kind: "spacecraft",
+    title: "The Apollo Spacecraft",
+    subtitle: "The part that went to the moon.",
+    // Everything above the Instrument Unit, all rebuilt in nosecone.ts: the adapter
+    // (the LM rides folded inside it), the service module, the command module under
+    // its boost cover, and the escape tower. Spacecraft_Top hangs off the IU node, so
+    // it takes that whole subtree and nothing of the launch vehicle below it.
+    bracket: ["Spacecraft_Top"],
+    span: [83.1, 110.4],
+    // Centred on 83.1→110.4 — nothing sits on top of it, so all of it is exposed.
+    camera: {
+      position: [21, 99, 53],
+      lookAt: [0, 96.5, 0],
+    },
+    body: [
+      "LAUNCH ESCAPE SYSTEM. If the launch went wrong, its rocket would pull the command module to safety. Never needed on a mission, it was jettisoned about 3 minutes in.",
+      "COMMAND MODULE. Where the astronauts lived and worked, and the only part that came back to Earth.",
+      "SERVICE MODULE. Fuel, oxygen and water, plus the main engine that braked into lunar orbit. No one could go inside it, and it was jettisoned before re-entry.",
+      "LUNAR MODULE. The lander, tucked inside the rocket for launch, with its own engines, fuel and life support. On Apollo 13 it was the crew's lifeboat after an oxygen tank blew in the service module.",
+    ],
+    specs: [
+      { label: "Modules", value: "CM · SM · LM" },
+      { label: "Crew", value: "3" },
+      { label: "Abort", value: "Launch escape tower" },
+    ],
+    isolate: ["Spacecraft_Top"],
   },
 ];

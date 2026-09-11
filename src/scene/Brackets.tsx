@@ -84,6 +84,7 @@ export function Brackets({ onSelect }: { onSelect: (i: number) => void }) {
             brackets.current[i] = el
           }}
           tag={h.tag}
+          kind={h.kind}
           onSelect={() => onSelect(i)}
         />
       ))}

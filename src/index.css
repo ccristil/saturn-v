@@ -89,8 +89,9 @@ canvas {
   letter-spacing: 0.02em;
   padding: 5px 10px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid var(--line);
+  /* --bracket is set per bracket by Bracket.tsx: orange for a stage, blue for the spacecraft */
+  background: color-mix(in srgb, var(--bracket, var(--line)) 24%, transparent);
+  border: 1.5px solid var(--bracket, var(--line));
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
