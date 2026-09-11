@@ -16,6 +16,13 @@ function dimMaterial(src: Material): Material {
     const anyMat = clone as unknown as { color?: Color }
     if (anyMat.color) anyMat.color = anyMat.color.clone().multiplyScalar(DIM)
   }
+  // Each stage's ends hide inside the shroud of its neighbour, often on the very
+  // same radius (S-II's aft skirt and the interstage are both r 5.05). Lit alike
+  // the z-fight is invisible; lit vs dimmed it shimmers grey. Bias dimmed meshes
+  // toward the camera so the shroud — the outer skin — wins those ties.
+  clone.polygonOffset = true
+  clone.polygonOffsetFactor = -1
+  clone.polygonOffsetUnits = -4
   clone.needsUpdate = true
   return clone
 }
