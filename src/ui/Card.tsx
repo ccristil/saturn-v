@@ -5,7 +5,7 @@ import { Clip } from './Clip'
 type Media = NonNullable<Hotspot['images']>[number] | NonNullable<Hotspot['clips']>[number]
 const keyOf = (m: Media) => ('youtube' in m ? `${m.youtube}@${m.from}` : m.src)
 
-export function Card({ hotspot }: { hotspot: Hotspot | null }) {
+export function Card({ hotspot, onHomecoming }: { hotspot: Hotspot | null; onHomecoming?: () => void }) {
   const [shot, setShot] = useState(0)
 
   // A new hotspot always opens on its first photo, never wherever the last one left off.
@@ -99,6 +99,11 @@ export function Card({ hotspot }: { hotspot: Hotspot | null }) {
                 )}
               </div>
             </div>
+          )}
+          {hotspot.homecoming && onHomecoming && (
+            <button type="button" className="hud-btn card__cta" onClick={onHomecoming}>
+              {hotspot.homecoming}
+            </button>
           )}
         </>
       )}

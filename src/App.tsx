@@ -9,6 +9,7 @@ import { Ground } from './scene/Ground'
 import { Brackets } from './scene/Brackets'
 import { Compare, preloadCompare } from './scene/Compare'
 import { Spacecraft, preloadSpacecraft } from './scene/Spacecraft'
+import { Homecoming } from './scene/Homecoming'
 import { GuestBoundary } from './scene/GuestBoundary'
 import { CameraRig, type CamPose } from './scene/CameraRig'
 import { Card } from './ui/Card'
@@ -25,6 +26,7 @@ import {
   COMPARE_CREDIT,
   LIBERTY_COMPARE,
   SPACECRAFT_VIEW,
+  HOMECOMING,
   LAUNCH_VIDEO,
 } from './content/hotspots'
 import { slides, slideSteps } from './content/slides'
@@ -79,6 +81,12 @@ export default function App() {
   const [spacecraft, setSpacecraft] = useState(false)
   const [spacecraftUp, setSpacecraftUp] = useState(false)
   const [spacecraftBeat, setSpacecraftBeat] = useState(0)
+  // The spacecraft card's "What came home?": the vehicle lets go of every part that didn't
+  // come back until the command module turns on its own. Same shape as the spacecraft view:
+  // `homecomingUp` holds it while it rewinds on close, `homecomingBeat` picks each beat's camera.
+  const [homecoming, setHomecoming] = useState(false)
+  const [homecomingUp, setHomecomingUp] = useState(false)
+  const [homecomingBeat, setHomecomingBeat] = useState(0)
   // The HUD's "Launch video": a YouTube video, full screen and with sound, over everything.
   // It owns the keyboard while it's up, so closing it leaves the scene exactly as it was.
   const [launchVideo, setLaunchVideo] = useState(false)
@@ -99,6 +107,21 @@ export default function App() {
     setSpacecraft(false)
     setSpacecraftUp(false)
   }
+  // "What came home?" closes the same two ways. It leaves its hotspot selected underneath (the
+  // card and the dimming step aside while it's up), so an arrow key lands back on that card.
+  const startHomecoming = () => {
+    setExploded(false)
+    closeCompare()
+    dropSpacecraft()
+    setHomecomingBeat(0)
+    setHomecomingUp(true)
+    setHomecoming(true)
+  }
+  const closeHomecoming = () => setHomecoming(false)
+  const dropHomecoming = () => {
+    setHomecoming(false)
+    setHomecomingUp(false)
+  }
 
   const closeCompare = () => {
     if (!comparing) return
@@ -110,6 +133,7 @@ export default function App() {
     setExploded(false) // compare, explode, spacecraft and hotspots are mutually exclusive
     setActiveIndex(null)
     dropSpacecraft()
+    dropHomecoming()
     setComparing(true)
     setLibertyUp(true)
     setLibertyMoving(true)
@@ -123,6 +147,7 @@ export default function App() {
     setExploded((v) => !v)
     setActiveIndex(null) // explode and hotspots are mutually exclusive
     dropSpacecraft()
+    dropHomecoming()
     closeCompare()
   }
 
@@ -131,6 +156,7 @@ export default function App() {
     setExploded(false)
     setActiveIndex(null)
     closeCompare()
+    dropHomecoming()
     setSpacecraftBeat(0)
     setSpacecraftUp(true)
     setSpacecraft(true)
@@ -144,6 +170,7 @@ export default function App() {
     setLibertyUp(false)
     setLibertyMoving(false)
     dropSpacecraft()
+    dropHomecoming()
     setMenuOpen(false) // the deck comes back to a tidy HUD
     setSlideIndex(0)
     setRevealed(0)
@@ -222,6 +249,7 @@ export default function App() {
         setExploded(false)
         setActiveIndex(null)
         closeSpacecraft()
+        closeHomecoming()
         closeCompare()
         return
       }
@@ -243,6 +271,9 @@ export default function App() {
       if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || (e.key >= '1' && e.key <= '9')) {
         dropSpacecraft()
         closeCompare()
+        dropHomecoming()
+        // Out of "What came home?", either arrow lands back on the card that opened it.
+        if (homecoming && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) return
       }
       if (e.key === 'ArrowRight')
         setActiveIndex((i) => Math.min((i ?? -1) + 1, hotspots.length - 1))
@@ -256,9 +287,10 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exploded, slideIndex, deckExiting, revealed, comparing, spacecraft])
+  }, [exploded, slideIndex, deckExiting, revealed, comparing, spacecraft, homecoming])
 
-  const activeHotspot = activeIndex === null ? null : hotspots[activeIndex]
+  // While "What came home?" is up its hotspot stays selected, but the card and dimming step aside.
+  const activeHotspot = activeIndex === null || homecomingUp ? null : hotspots[activeIndex]
 
   // The 'hero' slide shows the live model, tiny + spinning, on the right.
   // onHeroSlide keeps the deck transparent through the exit dissolve; heroPreview drives
@@ -288,6 +320,8 @@ export default function App() {
         ? LIBERTY_COMPARE.camera
         : spacecraft
           ? SPACECRAFT_VIEW.beats[spacecraftBeat].camera
+          : homecoming
+          ? HOMECOMING.beats[homecomingBeat].camera
           : heroPreview
           ? HERO_CAMERA
           : activeHotspot === null
@@ -373,14 +407,27 @@ export default function App() {
               />
             </GuestBoundary>
           )}
+          {homecomingUp && (
+            /* the spacecraft's parts again, in the rocket's own nose */
+            <GuestBoundary name="Homecoming">
+              <Homecoming
+                model={SPACECRAFT_VIEW.model}
+                beats={HOMECOMING.beats}
+                spinSpeed={HOMECOMING.spinSpeed}
+                present={homecoming}
+                onBeat={setHomecomingBeat}
+                onSettled={() => setHomecomingUp(false)}
+              />
+            </GuestBoundary>
+          )}
           <Ground
             bakeKey={compare?.model ?? (libertyUp ? LIBERTY_COMPARE.model : '')}
             guestX={compare ? deckGuestX : LIBERTY_COMPARE.x}
-            live={libertyMoving}
+            live={libertyMoving || homecomingUp}
           />
           {/* Wide shot only: once a hotspot is open, its card and the dimming say where
               you are, and the first stage's bracket would run off the dive-in frame. */}
-          {!exploded && !comparing && !spacecraftUp && slideIndex === null && activeIndex === null && (
+          {!exploded && !comparing && !spacecraftUp && !homecomingUp && slideIndex === null && activeIndex === null && (
             <Brackets onSelect={setActiveIndex} />
           )}
         </Suspense>
@@ -406,10 +453,10 @@ export default function App() {
         </EffectComposer>
       </Canvas>
 
-      <Card hotspot={activeHotspot} />
+      <Card hotspot={activeHotspot} onHomecoming={startHomecoming} />
       {/* hotspot progress belongs to the walkthrough — the deck's own counter owns
-          that corner while a slide is up */}
-      {slideIndex === null && <Progress hotspots={hotspots} activeIndex={activeIndex} />}
+          that corner while a slide is up, and "What came home?" plays with no labels at all */}
+      {slideIndex === null && !homecomingUp && <Progress hotspots={hotspots} activeIndex={activeIndex} />}
 
       {slideIndex === null && (
         <nav className={menuOpen ? 'hud hud--open' : 'hud'}>
@@ -454,7 +501,7 @@ export default function App() {
         {MODEL_CREDIT}
         {compare && <span className="credit__line">{COMPARE_CREDIT}</span>}
         {libertyUp && <span className="credit__line">{LIBERTY_COMPARE.credit}</span>}
-        {spacecraftUp && <span className="credit__line">{SPACECRAFT_VIEW.credit}</span>}
+        {(spacecraftUp || homecomingUp) && <span className="credit__line">{SPACECRAFT_VIEW.credit}</span>}
       </div>
 
       {slideIndex !== null && (

@@ -14,7 +14,9 @@ import { CanvasTexture, SRGBColorSpace } from 'three'
 // beside the Saturn V. When it changes, the shadow is remounted so it bakes again —
 // otherwise the guest's shadow stays burned into the floor after it leaves. `live` is for
 // a guest still on the move (the statue sliding in or out): the shadow follows it every
-// frame until it comes to rest.
+// frame until it comes to rest. It's also on while "What came home?" is up: the S-IC fades
+// away and back (Homecoming.tsx fades the shadow, by name, along with it), and a baked
+// shadow would come back empty.
 
 const BASE_Y = -1 // just below the lowest engine geometry
 
@@ -89,19 +91,21 @@ export function Ground({
         <circleGeometry args={[70, 64]} />
         <meshBasicMaterial map={tex} transparent depthWrite={false} />
       </mesh>
-      <ContactShadows
-        key={bake}
-        position={[0, 0.05, 0]}
-        scale={size}
-        resolution={1024}
-        blur={2.2}
-        far={16}
-        opacity={0.75}
-        color="#04060a"
-        // ContactShadows restarts its frame count whenever it re-renders, so dropping
-        // back to 1 when `live` ends takes exactly one more bake — guest at rest.
-        frames={live ? Infinity : 1}
-      />
+      <group name="Ground_Shadow">
+        <ContactShadows
+          key={bake}
+          position={[0, 0.05, 0]}
+          scale={size}
+          resolution={1024}
+          blur={2.2}
+          far={16}
+          opacity={0.75}
+          color="#04060a"
+          // ContactShadows restarts its frame count whenever it re-renders, so dropping
+          // back to 1 when `live` ends takes exactly one more bake — guest at rest.
+          frames={live ? Infinity : 1}
+        />
+      </group>
     </group>
   )
 }

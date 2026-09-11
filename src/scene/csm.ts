@@ -43,8 +43,9 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 // that axis from the CM's crew hatch (NASA −Z) toward the crew's right (NASA +Y), which
 // lands the hatch on +Z and +Y on +X — the same sense CylinderGeometry/LatheGeometry use.
 //
-// It's a lot of small parts, merged into one mesh per material, so the whole vehicle is
-// about twenty draw calls — it still has to hold 60fps on integrated graphics. The two
+// It's a lot of small parts, merged into one mesh per material — per module, so the service
+// module can be let go on its own (Homecoming.tsx) — so the whole vehicle is about twenty-five
+// draw calls; it still has to hold 60fps on integrated graphics. The two
 // booms that rode folded for launch (high-gain antenna, EVA floodlight) merge separately,
 // onto pivots, so Spacecraft.tsx can swing them out.
 
@@ -239,9 +240,10 @@ const wrapOnCone = (geo: BufferGeometry, phi: number, h: number, lift: number) =
 
 export function buildCSM(): Group {
   const mats = materials()
-  // Parts collect by material into `into`: the vehicle itself, or one of the two folding
-  // booms, which merge separately onto their own pivots.
+  // Parts collect by material into `into`: the service module, the command module, or one of
+  // the two folding booms, which merge separately onto their own pivots.
   const parts = new Map<Key, BufferGeometry[]>()
+  const cmParts = new Map<Key, BufferGeometry[]>()
   const hgaParts = new Map<Key, BufferGeometry[]>()
   const floodParts = new Map<Key, BufferGeometry[]>()
   let into = parts
@@ -486,6 +488,8 @@ export function buildCSM(): Group {
   }
 
   // ================= Command Module =================
+  // Merged apart from the service module, so the two can be let go separately (Homecoming.tsx)
+  into = cmParts
   // aft heat shield (hidden), the 7.7 in toroidal shoulder, the 33° sidewall, the forward
   // heat shield continuing it to a small flat top around the docking ring
   const cm: [number, number][] = [
@@ -571,9 +575,17 @@ export function buildCSM(): Group {
     }
     return out
   }
+  // The service module (with the engine bell and both booms) and the command module are
+  // each a group, one mesh per material — a few more draw calls for the materials they share.
   const group = new Group()
   group.name = 'CSM'
-  group.add(...meshes(parts, 'CSM'))
+  const smGroup = new Group()
+  smGroup.name = 'CSM_SM'
+  smGroup.add(...meshes(parts, 'CSM'))
+  const cmGroup = new Group()
+  cmGroup.name = 'CSM_CM'
+  cmGroup.add(...meshes(cmParts, 'CM'))
+  group.add(smGroup, cmGroup)
   // A folding boom: its parts re-expressed about the hinge, on a pivot whose rotation.x
   // swings it about the SM's tangent there (0 = deployed, as built).
   const boom = (name: string, map: Map<Key, BufferGeometry[]>, at: Vector3, phi: number) => {
@@ -590,7 +602,7 @@ export function buildCSM(): Group {
       pivot.add(mesh)
     }
     hinge.add(pivot)
-    group.add(hinge)
+    smGroup.add(hinge)
   }
   boom('CSM_HGA', hgaParts, hgaHinge, HGA)
   boom('CSM_Floodlight', floodParts, floodHinge, FLOODLIGHT)

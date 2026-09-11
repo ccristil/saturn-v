@@ -150,7 +150,7 @@ type Beat = { seconds: number; hold: number; camera: CamPose }
 
 // Timeline position after t seconds of playing: beat 0 is only a pause (the camera arriving),
 // then each beat's move runs u from k−1 to k over `seconds` and holds for `hold`.
-function uAt(t: number, beats: Beat[]): number {
+export function uAt(t: number, beats: Beat[]): number {
   let T = beats[0].hold
   if (t < T) return 0
   for (let k = 1; k < beats.length; k++) {
@@ -163,7 +163,7 @@ function uAt(t: number, beats: Beat[]): number {
   return beats.length - 1
 }
 // …and back: the play time at timeline position u (to carry on forward after a rewind).
-function timeAt(u: number, beats: Beat[]): number {
+export function timeAt(u: number, beats: Beat[]): number {
   let T = beats[0].hold
   if (u <= 0) return 0
   for (let k = 1; k < beats.length; k++) {
@@ -174,7 +174,7 @@ function timeAt(u: number, beats: Beat[]): number {
 }
 
 // The adapter nosecone.ts built, and where the spacecraft goes in it.
-function rigFor(top: Object3D) {
+export function rigFor(top: Object3D) {
   const layout = top.userData.tde as { R: number; fixedTop: number; bandTop: number } | undefined
   if (!layout) throw new Error('[Spacecraft] the rocket has no adapter to open (nosecone.ts layout missing)')
   const need = (name: string) => {
@@ -265,6 +265,41 @@ function pose(rig: Rig, u: number, roll: number, csmNode: Group, lmNode: Group, 
 let csmCache: Group | null = null
 let tunnelCache: Group | null = null
 
+// The spacecraft's parts, shared with Homecoming.tsx (the two are never up at once): the
+// detailed CSM and the LM's tunnel, built once; the LM from its glb, repainted and trimmed
+// once; and its gear fold, which is cached on the model, so both drive the same one.
+export function useSpacecraftParts(model: string) {
+  const { scene: lm } = useGLTF(`${import.meta.env.BASE_URL}${model}`)
+  const csm = useMemo(() => (csmCache ??= buildCSM()), [])
+  const tunnel = useMemo(() => (tunnelCache ??= buildLMTunnel()), [])
+  const booms = useMemo<Booms>(
+    () => ({ hga: csm.getObjectByName('CSM_HGA_Pivot'), flood: csm.getObjectByName('CSM_Floodlight_Pivot') }),
+    [csm],
+  )
+  useMemo(() => {
+    applyLivery(model, lm)
+    trimDockingAntennas(lm)
+  }, [model, lm])
+  const fold = useMemo(() => gearFold(lm), [lm])
+  return { lm, csm, tunnel, booms, fold }
+}
+
+// The LM in the CSM's docked frame: its tunnel, then the LM flipped roof-first onto it.
+export function DockedLM({ lm, tunnel }: { lm: Object3D; tunnel: Object3D }) {
+  return (
+    <>
+      <primitive object={tunnel} />
+      <group position-y={LM_HATCH_Y} rotation-y={LM_ROLL}>
+        <group rotation-x={Math.PI} scale={LM_M_PER_UNIT}>
+          <group position={[-LM_HATCH.x, -LM_HATCH.y, -LM_HATCH.z]}>
+            <primitive object={lm} />
+          </group>
+        </group>
+      </group>
+    </>
+  )
+}
+
 export function preloadSpacecraft(model: string) {
   useGLTF.preload(`${import.meta.env.BASE_URL}${model}`)
 }
@@ -287,18 +322,7 @@ export function Spacecraft({
   at?: number // pins the timeline here instead of playing (the lab)
 }) {
   const root = useThree((s) => s.scene)
-  const { scene: lm } = useGLTF(`${import.meta.env.BASE_URL}${model}`)
-  const csm = useMemo(() => (csmCache ??= buildCSM()), [])
-  const tunnel = useMemo(() => (tunnelCache ??= buildLMTunnel()), [])
-  const booms = useMemo<Booms>(
-    () => ({ hga: csm.getObjectByName('CSM_HGA_Pivot'), flood: csm.getObjectByName('CSM_Floodlight_Pivot') }),
-    [csm],
-  )
-  useMemo(() => {
-    applyLivery(model, lm)
-    trimDockingAntennas(lm)
-  }, [model, lm])
-  const fold = useMemo(() => gearFold(lm), [lm])
+  const { lm, csm, tunnel, booms, fold } = useSpacecraftParts(model)
   // The adapter to open. S can be pressed while the rocket is still loading, so keep looking
   // for it until it's there.
   const [top, setTop] = useState<Object3D | null>(() => root.getObjectByName('Spacecraft_Top') ?? null)
@@ -369,16 +393,8 @@ export function Spacecraft({
       <group ref={csmNode} visible={false}>
         <primitive object={csm} />
       </group>
-      {/* The LM in the CSM's docked frame: its tunnel, then the LM flipped roof-first onto it */}
       <group ref={lmNode} visible={false}>
-        <primitive object={tunnel} />
-        <group position-y={LM_HATCH_Y} rotation-y={LM_ROLL}>
-          <group rotation-x={Math.PI} scale={LM_M_PER_UNIT}>
-            <group position={[-LM_HATCH.x, -LM_HATCH.y, -LM_HATCH.z]}>
-              <primitive object={lm} />
-            </group>
-          </group>
-        </group>
+        <DockedLM lm={lm} tunnel={tunnel} />
       </group>
     </group>,
     top,

@@ -16,6 +16,7 @@ export type Hotspot = {
   images?: { src: string; alt: string; credit: string }[]; // cycled in the card, one at a time
   clips?: Clip[]; // YouTube snippets — same gallery, after any images; each plays on click
   isolate?: string[]; // stage node names to keep lit; everything else dims
+  homecoming?: string; // label of a button at the foot of the card that plays HOMECOMING
 };
 
 // A snippet of a YouTube video, played in the card when clicked (muted — the footage is
@@ -155,6 +156,94 @@ export const SPACECRAFT_VIEW: {
       seconds: 3.5,
       hold: 0,
       camera: { position: [19, 115, 32], lookAt: [5, 112.5, 0] },
+    },
+  ],
+};
+
+// The spacecraft card's "What came home?" (Homecoming.tsx): of the whole stack, only the
+// command module came back. The vehicle lets go of everything else, in the order Apollo 11 did,
+// until the command module is alone and turns slowly. Esc brings it all back.
+// One entry per beat: `parts` are the model nodes that fade out in it (none for the opening
+// zoom-out or the closing turn), `seconds` how long they take, `hold` the pause after. The
+// camera eases (1 s) to the beat's pose as the beat starts. Re-order by moving whole entries.
+export type HomecomingBeat = {
+  name: string; // for whoever re-times it, never shown
+  parts: string[];
+  seconds: number;
+  hold: number;
+  camera: {
+    position: [number, number, number];
+    lookAt: [number, number, number];
+  };
+};
+export const HOMECOMING: { spinSpeed: number; beats: HomecomingBeat[] } = {
+  spinSpeed: 0.25, // radians per second, once it's alone — about a turn every 25 s
+  beats: [
+    { name: "zoom out", parts: [], seconds: 0, hold: 1.4, camera: HOME_CAMERA },
+    {
+      // 2:42 after launch; the interstage ring round the J-2s follows 30 s later
+      name: "first stage",
+      parts: ["S-IC", "Interstage"],
+      seconds: 1.4,
+      hold: 0.8,
+      camera: HOME_CAMERA,
+    },
+    {
+      // 3:17 — the escape tower and the cover over the command module
+      name: "escape tower",
+      parts: ["LES"],
+      seconds: 1.4,
+      hold: 0.8,
+      camera: { position: [38, 80, 120], lookAt: [0, 76, 0] },
+    },
+    {
+      // 9:09 — the second stage, with the interstage the S-IVB sat in
+      name: "second stage",
+      parts: ["S-II", "S-II_Top"],
+      seconds: 1.4,
+      hold: 0.8,
+      camera: { position: [38, 80, 120], lookAt: [0, 76, 0] },
+    },
+    {
+      // after the burn to the Moon — the S-IVB, its Instrument Unit, and the adapter the LM rode in
+      name: "third stage",
+      parts: [
+        "S-IVB",
+        "Instrument_Unit_Metal_0", // the IU's mesh, not its node: the spacecraft hangs off the node
+        "SLA_Fixed",
+        "SLA_Deck",
+        "SLA_Panel_0",
+        "SLA_Panel_1",
+        "SLA_Panel_2",
+        "SLA_Panel_3",
+      ],
+      seconds: 1.4,
+      hold: 0.8,
+      camera: { position: [24, 95, 76], lookAt: [0, 88, 0] },
+    },
+    {
+      // lunar orbit — the LM's ascent stage, after the moonwalk (its descent stage stayed on the Moon)
+      name: "lunar module",
+      parts: ["LM"],
+      seconds: 1.4,
+      hold: 0.8,
+      camera: { position: [12, 96.5, 38], lookAt: [0, 91, 0] },
+    },
+    {
+      // minutes before re-entry — the service module
+      name: "service module",
+      parts: ["CSM_SM"],
+      seconds: 1.4,
+      hold: 0.8,
+      camera: { position: [7.2, 98, 23], lookAt: [0, 95, 0] },
+    },
+    {
+      // the command module alone: the camera closes in and it starts to turn
+      name: "command module",
+      parts: [],
+      seconds: 1.5,
+      hold: 0,
+      camera: { position: [3.4, 101.6, 10.4], lookAt: [0, 98.8, 0] },
     },
   ],
 };
@@ -349,5 +438,6 @@ export const hotspots: Hotspot[] = [
       { label: "Abort", value: "Launch escape tower" },
     ],
     isolate: ["Spacecraft_Top"],
+    homecoming: "What came home?",
   },
 ];
