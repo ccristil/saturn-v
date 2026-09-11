@@ -82,15 +82,19 @@ export const LIBERTY_COMPARE = {
 export const SPACECRAFT_VIEW = {
   model: "models/lunar-module.glb",
   credit: "“Apollo 11 Lunar Module” by CMFDesign · CC BY 4.0",
-  position: [17, 103, 0] as [number, number, number], // middle of the docked stack
-  rotation: [0, 0.3, 1.3] as [number, number, number], // long axis near-horizontal, turned into the key light
+  position: [15, 103.5, 0] as [number, number, number], // middle of the docked stack, beside the rocket's own CSM
+  // Upright, parallel to the Saturn V: SPS engine down, the LM riding on the CM's nose —
+  // the way up the pair flew whenever the SPS fired with the LM docked, so the LM is
+  // upside down. [Math.PI, 0.5, 0] would stand the LM on its legs instead. The 0.5 only
+  // sets where the roll starts.
+  rotation: [0, 0.5, 0] as [number, number, number],
   rollSpeed: 0.1, // radians per second — about a turn a minute
-  // Fills about half the frame and stays in it through the whole roll at 16:10, 16:9 and
-  // 4:3, clear of the Menu pills and the credit. If re-tuned, keep the rocket's axis at
-  // least 170 px from the left edge, or the escape tower runs under the Menu.
+  // Stands ~80% of the frame tall and stays in it through the whole roll, clear of the
+  // Menu pills and the credit. If re-tuned, keep the rocket's axis at least 170 px from
+  // the left edge, or the escape tower runs under the Menu.
   camera: {
-    position: [14.5, 106, 31] as [number, number, number],
-    lookAt: [10.5, 102, 0] as [number, number, number],
+    position: [13, 105, 32] as [number, number, number],
+    lookAt: [9.5, 103.5, 0] as [number, number, number],
   },
 };
 
