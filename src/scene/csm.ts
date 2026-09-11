@@ -5,6 +5,7 @@ import {
   CircleGeometry,
   Color,
   CylinderGeometry,
+  DoubleSide,
   Euler,
   ExtrudeGeometry,
   Float32BufferAttribute,
@@ -43,7 +44,9 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 // lands the hatch on +Z and +Y on +X — the same sense CylinderGeometry/LatheGeometry use.
 //
 // It's a lot of small parts, merged into one mesh per material, so the whole vehicle is
-// about fifteen draw calls — it still has to hold 60fps on integrated graphics.
+// about twenty draw calls — it still has to hold 60fps on integrated graphics. The two
+// booms that rode folded for launch (high-gain antenna, EVA floodlight) merge separately,
+// onto pivots, so Spacecraft.tsx can swing them out.
 
 const DEG = Math.PI / 180
 const R = 1.956 // the CM's widest point and the SM share this radius: 154 in (3.91 m) across
@@ -66,6 +69,11 @@ export const DOCK_Y = H.dock
 // The LM's docking tunnel stands 16 in (0.41 m) above its overhead hatch; its hatch disc
 // therefore sits this far past the mating plane.
 export const LM_HATCH_Y = H.dock + 0.41
+// The SM's aft bulkhead — where the CSM sits on the Spacecraft-LM Adapter.
+export const SM_AFT_Y = H.smAft
+// The folding booms' pivot rotation.x when stowed for launch (0 = deployed, as built).
+export const HGA_STOWED = Math.PI / 2 // high-gain antenna: boom straight aft, beside the engine bell
+export const FLOOD_STOWED = 115 * DEG // EVA floodlight: folded down flat against the fairing
 
 const TAN = Math.tan(33 * DEG)
 const coneR = (h: number) => 1.924 - TAN * (h - H.coneStart) // 33° half-angle sidewall
@@ -224,14 +232,19 @@ const wrapOnCone = (geo: BufferGeometry, phi: number, h: number, lift: number) =
 
 export function buildCSM(): Group {
   const mats = materials()
+  // Parts collect by material into `into`: the vehicle itself, or one of the two folding
+  // booms, which merge separately onto their own pivots.
   const parts = new Map<Key, BufferGeometry[]>()
+  const hgaParts = new Map<Key, BufferGeometry[]>()
+  const floodParts = new Map<Key, BufferGeometry[]>()
+  let into = parts
   const add = (key: Key, geo: BufferGeometry, m?: Matrix4) => {
     if (m) geo.applyMatrix4(m)
     const flat = geo.index ? geo.toNonIndexed() : geo
     if (flat !== geo) geo.dispose()
-    const list = parts.get(key) ?? []
+    const list = into.get(key) ?? []
     list.push(flat)
-    parts.set(key, list)
+    into.set(key, list)
   }
   const lathe = (pts: [number, number][], segments = 96) => new LatheGeometry(pts.map(([r, y]) => new Vector2(r, y)), segments)
   const ring = (r: number, tube: number, y: number, key: Key, seg = 96) =>
@@ -349,11 +362,14 @@ export function buildCSM(): Group {
     add('panel', new BoxGeometry(0.06, 0.5, 0.02), M(around(phi, R + 0.005, 5.2), facing(phi)))
   }
 
-  // --- high-gain antenna, deployed: hinge box on the aft rim, boom, four dishes + horn ---
+  // --- high-gain antenna, deployed: hinge box on the aft rim, boom, four dishes + horn.
+  // Everything past the hinge box folds, so it goes to hgaParts ---
+  const hgaHinge = around(HGA, R + 0.2, H.smAft + 0.02)
   {
     const out = radial(HGA)
     add('panel', new BoxGeometry(0.22, 0.34, 0.24), M(around(HGA, R + 0.1, H.smAft + 0.1), facing(HGA)))
-    const boomA = around(HGA, R + 0.2, H.smAft + 0.02)
+    into = hgaParts
+    const boomA = hgaHinge
     const boomB = around(HGA, R + 1.15, H.smAft - 0.05)
     strut(boomA, boomB, 0.045, 'white', 10)
     add('panel', new BoxGeometry(0.18, 0.18, 0.18), M(boomB, facing(HGA)))
@@ -396,6 +412,7 @@ export function buildCSM(): Group {
     add('white', new BoxGeometry(0.28, 0.28, 0.3), local(at(0, 0, 0.02)))
     add('panel', new BoxGeometry(1.2, 0.06, 0.06), local(at(0, 0, -0.06)))
     add('panel', new BoxGeometry(0.06, 1.2, 0.06), local(at(0, 0, -0.06)))
+    into = parts
   }
 
   // ================= Forward fairing: EPS radiator band =================
@@ -415,12 +432,16 @@ export function buildCSM(): Group {
     skin('white', R + 0.004, H.smTop, H.smTop + 0.33, phi, w)
     for (const y of [6.99, 7.07, 7.15]) skin('panel', R + 0.007, y, y + 0.012, phi, w)
   }
-  // EVA floodlight on its boom, running lights, docking spotlight door, rendezvous beacon
+  // EVA floodlight on its boom (it folds, so floodParts), running lights, docking spotlight
+  // door, rendezvous beacon
+  const floodHinge = around(FLOODLIGHT, R - 0.02, 7.2)
   {
-    const base = around(FLOODLIGHT, R - 0.02, 7.2)
+    const base = floodHinge
     const tip = base.clone().addScaledVector(radial(FLOODLIGHT).addScaledVector(Y, 0.6).normalize(), 0.9)
+    into = floodParts
     strut(base, tip, 0.022, 'bronze', 8)
     add('white', new BoxGeometry(0.12, 0.1, 0.12), M(tip, facing(FLOODLIGHT)))
+    into = parts
     add('panel', new BoxGeometry(0.2, 0.14, 0.05), M(around(327 * DEG, R + 0.01, 7.2), facing(327 * DEG)))
     // rendezvous beacon: just clear of the umbilical housing's −Y side
     add('panel', new CylinderGeometry(0.05, 0.06, 0.1, 12), M(around(188 * DEG, R + 0.03, 7.18), new Euler(0, 188 * DEG, Math.PI / 2)))
@@ -470,13 +491,16 @@ export function buildCSM(): Group {
   cm.push([coneR(8.4), 8.4], [coneR(9.1), 9.1], [coneR(H.flatTop - 0.008), H.flatTop - 0.008], [TOP_R, H.flatTop], [TOP_R - 0.01, H.flatTop], [0.437, H.flatTop])
   add('mylar', lathe(cm, 128))
   ring(coneR(H.seam) + 0.003, 0.006, H.seam, 'panel', 96) // forward heat shield joint
-  // docking ring (copper), EVA ring handle on eight posts, and the LM's tunnel above it
+  // docking ring (copper), EVA ring handle on eight posts, and the docking probe: it leads
+  // the approach and, docked, sits inside the LM's tunnel (buildLMTunnel — the tunnel is the
+  // LM's, so it travels with the LM)
   add('copper', new CylinderGeometry(0.435, 0.435, H.dock - H.flatTop, 64, 1, true), M(new Vector3(0, (H.flatTop + H.dock) / 2, 0)))
   add('copper', new RingGeometry(0.33, 0.435, 64), M(new Vector3(0, H.dock, 0), new Euler(-Math.PI / 2, 0, 0)))
   ring(0.5, 0.013, H.handle, 'alu', 64)
   for (let k = 0; k < 8; k++) strut(around(k * 45 * DEG, 0.5, H.flatTop), around(k * 45 * DEG, 0.5, H.handle), 0.008, 'alu', 5)
-  add('dark', new CylinderGeometry(0.45, 0.45, LM_HATCH_Y - H.dock, 48, 1, true), M(new Vector3(0, (H.dock + LM_HATCH_Y) / 2, 0)))
-  ring(0.465, 0.022, H.dock + 0.02, 'panel', 48)
+  add('dark', new CircleGeometry(0.34, 32), M(new Vector3(0, H.dock - 0.02, 0), new Euler(-Math.PI / 2, 0, 0)))
+  add('alu', new CylinderGeometry(0.035, 0.05, 0.3, 12), M(new Vector3(0, H.dock + 0.15, 0)))
+  add('alu', new SphereGeometry(0.045, 10, 8), M(new Vector3(0, H.dock + 0.33, 0)))
   // four launch-escape-tower wells just above the joint
   for (let k = 0; k < 4; k++) {
     const phi = (45 + k * 90) * DEG
@@ -523,19 +547,62 @@ export function buildCSM(): Group {
   }
 
   // ================= one mesh per material =================
+  const meshes = (map: Map<Key, BufferGeometry[]>, prefix: string) => {
+    const out: Mesh[] = []
+    for (const [key, geos] of map) {
+      const merged = mergeGeometries(geos, false)
+      geos.forEach((g) => g.dispose())
+      if (!merged) {
+        // eslint-disable-next-line no-console
+        console.error(`[csm] could not merge the "${key}" parts of ${prefix}`)
+        continue
+      }
+      const mesh = new Mesh(merged, mats[key])
+      mesh.name = `${prefix}_${key}`
+      out.push(mesh)
+    }
+    return out
+  }
   const group = new Group()
   group.name = 'CSM'
-  for (const [key, geos] of parts) {
-    const merged = mergeGeometries(geos, false)
-    geos.forEach((g) => g.dispose())
-    if (!merged) {
-      // eslint-disable-next-line no-console
-      console.error(`[csm] could not merge the "${key}" parts`)
-      continue
+  group.add(...meshes(parts, 'CSM'))
+  // A folding boom: its parts re-expressed about the hinge, on a pivot whose rotation.x
+  // swings it about the SM's tangent there (0 = deployed, as built).
+  const boom = (name: string, map: Map<Key, BufferGeometry[]>, at: Vector3, phi: number) => {
+    const hinge = new Group()
+    hinge.name = name
+    hinge.position.copy(at)
+    hinge.rotation.y = phi
+    hinge.updateMatrix()
+    const toHinge = hinge.matrix.clone().invert()
+    const pivot = new Group()
+    pivot.name = `${name}_Pivot`
+    for (const mesh of meshes(map, name)) {
+      mesh.geometry.applyMatrix4(toHinge)
+      pivot.add(mesh)
     }
-    const mesh = new Mesh(merged, mats[key])
-    mesh.name = `CSM_${key}`
-    group.add(mesh)
+    hinge.add(pivot)
+    group.add(hinge)
   }
+  boom('CSM_HGA', hgaParts, hgaHinge, HGA)
+  boom('CSM_Floodlight', floodParts, floodHinge, FLOODLIGHT)
+  return group
+}
+
+// The LM's docking tunnel: 16 in of sleeve standing off its roof, and the ring that butts
+// against the CM's docking ring. Built in the CSM's frame (it spans DOCK_Y → LM_HATCH_Y),
+// but it's the LM's — Spacecraft.tsx carries it with the LM until the two are docked.
+export function buildLMTunnel(): Group {
+  const group = new Group()
+  group.name = 'LM_Tunnel'
+  const sleeve = new Mesh(
+    new CylinderGeometry(0.45, 0.45, LM_HATCH_Y - H.dock, 48, 1, true),
+    new MeshStandardMaterial({ color: 0x3a3d42, metalness: 0.45, roughness: 0.55, side: DoubleSide }),
+  )
+  sleeve.position.y = (H.dock + LM_HATCH_Y) / 2
+  const rim = new Mesh(new TorusGeometry(0.465, 0.022, 6, 48), new MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.5, roughness: 0.5 }))
+  rim.rotation.x = Math.PI / 2
+  rim.position.y = H.dock + 0.02
+  group.add(sleeve, rim)
   return group
 }

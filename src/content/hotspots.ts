@@ -76,26 +76,32 @@ export const LIBERTY_COMPARE = {
   },
 };
 
-// The HUD's "Spacecraft" button (or `S`): the CSM docked to the Lunar Module, floating
-// beside the Saturn V's nose at true scale (Spacecraft.tsx measures the live stack), in
-// the configuration it flew in lunar orbit — the LM model's legs are deployed.
-export const SPACECRAFT_VIEW = {
+// The HUD's "Spacecraft" button (or `S`): Apollo 11's transposition, docking and
+// extraction, played out of the Saturn V's own nose (Spacecraft.tsx), then a skip ahead to
+// lunar orbit where the LM's legs come down. It plays straight through; Esc or S rewinds it.
+// One entry per beat, in order. The moves themselves are fixed in Spacecraft.tsx, so there
+// are always seven: stacked, tower off, separate, turn around, dock, extract, lunar orbit.
+// `seconds` is how long the move takes, `hold` the pause after it; the camera eases (1 s)
+// to the beat's pose as its move starts.
+export type SpacecraftBeat = {
+  name: string; // which move — for whoever re-times it, never shown
+  seconds: number;
+  hold: number;
+  camera: { position: [number, number, number]; lookAt: [number, number, number] };
+};
+export const SPACECRAFT_VIEW: { model: string; credit: string; rollSpeed: number; beats: SpacecraftBeat[] } = {
   model: "models/lunar-module.glb",
   credit: "“Apollo 11 Lunar Module” by CMFDesign · CC BY 4.0",
-  position: [15, 103.5, 0] as [number, number, number], // middle of the docked stack, beside the rocket's own CSM
-  // Upright, parallel to the Saturn V: SPS engine down, the LM riding on the CM's nose —
-  // the way up the pair flew whenever the SPS fired with the LM docked, so the LM is
-  // upside down. [Math.PI, 0.5, 0] would stand the LM on its legs instead. The 0.5 only
-  // sets where the roll starts.
-  rotation: [0, 0.5, 0] as [number, number, number],
-  rollSpeed: 0.1, // radians per second — about a turn a minute
-  // Stands ~80% of the frame tall and stays in it through the whole roll, clear of the
-  // Menu pills and the credit. If re-tuned, keep the rocket's axis at least 170 px from
-  // the left edge, or the escape tower runs under the Menu.
-  camera: {
-    position: [13, 105, 32] as [number, number, number],
-    lookAt: [9.5, 103.5, 0] as [number, number, number],
-  },
+  rollSpeed: 0.1, // radians per second, once in lunar orbit — about a turn a minute
+  beats: [
+    { name: "stacked", seconds: 0, hold: 1.2, camera: { position: [16, 103, 45], lookAt: [0, 101, 0] } },
+    { name: "tower off", seconds: 2.2, hold: 0.4, camera: { position: [16, 103, 45], lookAt: [0, 101, 0] } },
+    { name: "separate", seconds: 4, hold: 0.4, camera: { position: [17, 100.5, 44], lookAt: [0, 98, 0] } },
+    { name: "turn around", seconds: 4, hold: 0.3, camera: { position: [13, 108, 34], lookAt: [0, 106, 0] } },
+    { name: "dock", seconds: 4, hold: 0.6, camera: { position: [14, 98, 36], lookAt: [0, 95, 0] } },
+    { name: "extract", seconds: 3.5, hold: 0.4, camera: { position: [16, 104, 42], lookAt: [0, 101, 0] } },
+    { name: "lunar orbit", seconds: 3.5, hold: 0, camera: { position: [19, 115, 32], lookAt: [5, 112.5, 0] } },
+  ],
 };
 
 export const hotspots: Hotspot[] = [

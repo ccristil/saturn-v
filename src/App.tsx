@@ -71,8 +71,12 @@ export default function App() {
   // The HUD controls stay tucked behind one Menu pill until it's clicked. Keyboard
   // shortcuts (X, C, arrows) work either way — the menu only hides the buttons.
   const [menuOpen, setMenuOpen] = useState(false)
-  // The HUD's "Spacecraft": the docked CSM + LM floating beside the Saturn V's nose.
+  // The HUD's "Spacecraft": Apollo 11's transposition, docking and extraction, played out of
+  // the rocket's own nose. `spacecraft` is what the presenter asked for; it stays mounted
+  // (`spacecraftUp`) while it rewinds on close, and `spacecraftBeat` picks each beat's camera.
   const [spacecraft, setSpacecraft] = useState(false)
+  const [spacecraftUp, setSpacecraftUp] = useState(false)
+  const [spacecraftBeat, setSpacecraftBeat] = useState(0)
 
   // Warm every comparison model at startup: mounting one cold, mid-talk, would suspend
   // and blank the scene for as long as the download takes.
@@ -81,6 +85,15 @@ export default function App() {
     preloadCompare(LIBERTY_COMPARE.model)
     preloadSpacecraft(SPACECRAFT_VIEW.model)
   }, [])
+
+  // Closing the spacecraft rewinds it while the camera flies home (Esc, S). Anything that
+  // takes the scene elsewhere drops it at once instead — the camera is leaving the nose, and
+  // a hotspot's dimming mustn't catch the spacecraft's meshes mid-rewind.
+  const closeSpacecraft = () => setSpacecraft(false)
+  const dropSpacecraft = () => {
+    setSpacecraft(false)
+    setSpacecraftUp(false)
+  }
 
   const closeCompare = () => {
     if (!comparing) return
@@ -91,7 +104,7 @@ export default function App() {
     if (comparing) return closeCompare()
     setExploded(false) // compare, explode, spacecraft and hotspots are mutually exclusive
     setActiveIndex(null)
-    setSpacecraft(false)
+    dropSpacecraft()
     setComparing(true)
     setLibertyUp(true)
     setLibertyMoving(true)
@@ -104,17 +117,18 @@ export default function App() {
   const toggleExplode = () => {
     setExploded((v) => !v)
     setActiveIndex(null) // explode and hotspots are mutually exclusive
-    setSpacecraft(false)
+    dropSpacecraft()
     closeCompare()
   }
 
   const toggleSpacecraft = () => {
-    if (!spacecraft) {
-      setExploded(false)
-      setActiveIndex(null)
-      closeCompare()
-    }
-    setSpacecraft(!spacecraft)
+    if (spacecraft) return closeSpacecraft()
+    setExploded(false)
+    setActiveIndex(null)
+    closeCompare()
+    setSpacecraftBeat(0)
+    setSpacecraftUp(true)
+    setSpacecraft(true)
   }
 
   const startPresentation = () => {
@@ -124,7 +138,7 @@ export default function App() {
     setComparing(false)
     setLibertyUp(false)
     setLibertyMoving(false)
-    setSpacecraft(false)
+    dropSpacecraft()
     setMenuOpen(false) // the deck comes back to a tidy HUD
     setSlideIndex(0)
     setRevealed(0)
@@ -202,7 +216,7 @@ export default function App() {
       if (e.key === 'Escape') {
         setExploded(false)
         setActiveIndex(null)
-        setSpacecraft(false)
+        closeSpacecraft()
         closeCompare()
         return
       }
@@ -222,7 +236,7 @@ export default function App() {
       // Stepping to a stage ends the comparison (or the spacecraft view) rather than
       // being ignored — arrow nav always does something.
       if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || (e.key >= '1' && e.key <= '9')) {
-        setSpacecraft(false)
+        dropSpacecraft()
         closeCompare()
       }
       if (e.key === 'ArrowRight')
@@ -268,7 +282,7 @@ export default function App() {
       : comparing
         ? LIBERTY_COMPARE.camera
         : spacecraft
-          ? SPACECRAFT_VIEW.camera
+          ? SPACECRAFT_VIEW.beats[spacecraftBeat].camera
           : heroPreview
           ? HERO_CAMERA
           : activeHotspot === null
@@ -340,14 +354,17 @@ export default function App() {
               />
             </GuestBoundary>
           )}
-          {spacecraft && (
-            /* floats ~100 units up, far out of the contact-shadow pass, so no re-bake */
+          {spacecraftUp && (
+            /* plays on the rocket's nose, ~100 units up — far out of the contact-shadow
+               pass, so no re-bake */
             <GuestBoundary name="Spacecraft">
               <Spacecraft
                 model={SPACECRAFT_VIEW.model}
-                position={SPACECRAFT_VIEW.position}
-                rotation={SPACECRAFT_VIEW.rotation}
+                beats={SPACECRAFT_VIEW.beats}
                 rollSpeed={SPACECRAFT_VIEW.rollSpeed}
+                present={spacecraft}
+                onBeat={setSpacecraftBeat}
+                onSettled={() => setSpacecraftUp(false)}
               />
             </GuestBoundary>
           )}
@@ -358,7 +375,7 @@ export default function App() {
           />
           {/* Wide shot only: once a hotspot is open, its card and the dimming say where
               you are, and the first stage's bracket would run off the dive-in frame. */}
-          {!exploded && !comparing && !spacecraft && slideIndex === null && activeIndex === null && (
+          {!exploded && !comparing && !spacecraftUp && slideIndex === null && activeIndex === null && (
             <Brackets onSelect={setActiveIndex} />
           )}
         </Suspense>
@@ -429,7 +446,7 @@ export default function App() {
         {MODEL_CREDIT}
         {compare && <span className="credit__line">{COMPARE_CREDIT}</span>}
         {libertyUp && <span className="credit__line">{LIBERTY_COMPARE.credit}</span>}
-        {spacecraft && <span className="credit__line">{SPACECRAFT_VIEW.credit}</span>}
+        {spacecraftUp && <span className="credit__line">{SPACECRAFT_VIEW.credit}</span>}
       </div>
 
       {slideIndex !== null && (
