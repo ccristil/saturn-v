@@ -76,6 +76,21 @@ export const LIBERTY_COMPARE = {
   },
 };
 
+// The HUD's "Spacecraft" button (or `S`): the CSM docked to the Lunar Module, floating
+// beside the Saturn V's nose at true scale (Spacecraft.tsx measures the live stack), in
+// the configuration it flew in lunar orbit — the LM model's legs are deployed.
+export const SPACECRAFT_VIEW = {
+  model: "models/lunar-module.glb",
+  credit: "“Apollo 11 Lunar Module” by CMFDesign · CC BY 4.0",
+  position: [26, 100, 0] as [number, number, number], // middle of the docked stack
+  rotation: [0, -0.45, 1.35] as [number, number, number], // lays the long axis near-horizontal
+  rollSpeed: 0.1, // radians per second — about a turn a minute
+  camera: {
+    position: [34, 106, 46] as [number, number, number],
+    lookAt: [18, 100, 0] as [number, number, number],
+  },
+};
+
 export const hotspots: Hotspot[] = [
   {
     id: "f1-engines",

@@ -76,10 +76,31 @@ function dullLiberty(root: Object3D): void {
   })
 }
 
+// The Tinkercad LM ships every surface fully matte (glTF's default roughness of 1), which
+// turns the gold foil wrap on the descent stage into mustard paint. Give the foil a
+// metallic sheen to catch the studio lights and take the rest down to satin. Its
+// materials are used by nothing else, so no clone.
+const LM_FOIL = /^color_14789940$/ // the gold Kapton wrap
+
+function sheenLM(root: Object3D): void {
+  root.traverse((o) => {
+    const mesh = o as Mesh
+    if (!mesh.isMesh) return
+    for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+      if (!(m instanceof MeshStandardMaterial)) continue
+      const foil = LM_FOIL.test(m.name)
+      m.metalness = foil ? 0.6 : 0.15
+      m.roughness = foil ? 0.4 : 0.6
+      m.needsUpdate = true
+    }
+  })
+}
+
 // Runs once per loaded model (useGLTF caches the scene, so guard it).
 export function applyLivery(model: string, root: Object3D): void {
   if (root.userData.__liveryPainted) return
   if (/n1/i.test(model)) paintN1(root)
   else if (/liberty/i.test(model)) dullLiberty(root)
+  else if (/lunar-module/i.test(model)) sheenLM(root)
   root.userData.__liveryPainted = true
 }

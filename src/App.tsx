@@ -8,6 +8,7 @@ import { Stack } from './scene/Stack'
 import { Ground } from './scene/Ground'
 import { Callouts } from './scene/Callouts'
 import { Compare, preloadCompare } from './scene/Compare'
+import { Spacecraft, preloadSpacecraft } from './scene/Spacecraft'
 import { CameraRig, type CamPose } from './scene/CameraRig'
 import { Card } from './ui/Card'
 import { Progress } from './ui/Progress'
@@ -21,6 +22,7 @@ import {
   MODEL_CREDIT,
   COMPARE_CREDIT,
   LIBERTY_COMPARE,
+  SPACECRAFT_VIEW,
 } from './content/hotspots'
 import { slides, slideSteps } from './content/slides'
 
@@ -68,12 +70,15 @@ export default function App() {
   // The HUD controls stay tucked behind one Menu pill until it's clicked. Keyboard
   // shortcuts (X, C, arrows) work either way — the menu only hides the buttons.
   const [menuOpen, setMenuOpen] = useState(false)
+  // The HUD's "Spacecraft": the docked CSM + LM floating beside the Saturn V's nose.
+  const [spacecraft, setSpacecraft] = useState(false)
 
   // Warm every comparison model at startup: mounting one cold, mid-talk, would suspend
   // and blank the scene for as long as the download takes.
   useEffect(() => {
     for (const s of slides) if (s.compare) preloadCompare(s.compare.model)
     preloadCompare(LIBERTY_COMPARE.model)
+    preloadSpacecraft(SPACECRAFT_VIEW.model)
   }, [])
 
   const closeCompare = () => {
@@ -83,8 +88,9 @@ export default function App() {
   }
   const toggleCompare = () => {
     if (comparing) return closeCompare()
-    setExploded(false) // compare, explode and hotspots are mutually exclusive
+    setExploded(false) // compare, explode, spacecraft and hotspots are mutually exclusive
     setActiveIndex(null)
+    setSpacecraft(false)
     setComparing(true)
     setLibertyUp(true)
     setLibertyMoving(true)
@@ -97,7 +103,17 @@ export default function App() {
   const toggleExplode = () => {
     setExploded((v) => !v)
     setActiveIndex(null) // explode and hotspots are mutually exclusive
+    setSpacecraft(false)
     closeCompare()
+  }
+
+  const toggleSpacecraft = () => {
+    if (!spacecraft) {
+      setExploded(false)
+      setActiveIndex(null)
+      closeCompare()
+    }
+    setSpacecraft(!spacecraft)
   }
 
   const startPresentation = () => {
@@ -107,6 +123,7 @@ export default function App() {
     setComparing(false)
     setLibertyUp(false)
     setLibertyMoving(false)
+    setSpacecraft(false)
     setMenuOpen(false) // the deck comes back to a tidy HUD
     setSlideIndex(0)
     setRevealed(0)
@@ -181,24 +198,29 @@ export default function App() {
       if (e.key === 'Escape') {
         setExploded(false)
         setActiveIndex(null)
+        setSpacecraft(false)
         closeCompare()
         return
       }
       if (e.key === 'x' || e.key === 'X') {
-        setExploded((v) => !v)
-        setActiveIndex(null)
-        closeCompare()
+        toggleExplode()
         return
       }
       if (e.key === 'c' || e.key === 'C') {
         toggleCompare()
         return
       }
+      if (e.key === 's' || e.key === 'S') {
+        toggleSpacecraft()
+        return
+      }
       if (exploded) return // stage nav is disabled while exploded
-      // Stepping to a stage ends the comparison rather than being ignored — arrow nav
-      // always does something.
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || (e.key >= '1' && e.key <= '9'))
+      // Stepping to a stage ends the comparison (or the spacecraft view) rather than
+      // being ignored — arrow nav always does something.
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || (e.key >= '1' && e.key <= '9')) {
+        setSpacecraft(false)
         closeCompare()
+      }
       if (e.key === 'ArrowRight')
         setActiveIndex((i) => Math.min((i ?? -1) + 1, hotspots.length - 1))
       else if (e.key === 'ArrowLeft')
@@ -211,7 +233,7 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exploded, slideIndex, deckExiting, revealed, comparing])
+  }, [exploded, slideIndex, deckExiting, revealed, comparing, spacecraft])
 
   const activeHotspot = activeIndex === null ? null : hotspots[activeIndex]
 
@@ -241,7 +263,9 @@ export default function App() {
       ? COMPARE_CAMERA
       : comparing
         ? LIBERTY_COMPARE.camera
-        : heroPreview
+        : spacecraft
+          ? SPACECRAFT_VIEW.camera
+          : heroPreview
           ? HERO_CAMERA
           : activeHotspot === null
             ? HOME_CAMERA
@@ -310,12 +334,23 @@ export default function App() {
               />
             </Suspense>
           )}
+          {spacecraft && (
+            /* floats ~100 units up, far out of the contact-shadow pass, so no re-bake */
+            <Suspense fallback={null}>
+              <Spacecraft
+                model={SPACECRAFT_VIEW.model}
+                position={SPACECRAFT_VIEW.position}
+                rotation={SPACECRAFT_VIEW.rotation}
+                rollSpeed={SPACECRAFT_VIEW.rollSpeed}
+              />
+            </Suspense>
+          )}
           <Ground
             bakeKey={compare?.model ?? (libertyUp ? LIBERTY_COMPARE.model : '')}
             guestX={compare ? deckGuestX : LIBERTY_COMPARE.x}
             live={libertyMoving}
           />
-          {!exploded && !comparing && slideIndex === null && (
+          {!exploded && !comparing && !spacecraft && slideIndex === null && (
             <Callouts
               activeIndex={activeIndex}
               flip={activeIndex !== null}
@@ -376,6 +411,12 @@ export default function App() {
             >
               Compare
             </button>
+            <button
+              className={spacecraft ? 'hud-btn spacecraft-btn is-active' : 'hud-btn spacecraft-btn'}
+              onClick={toggleSpacecraft}
+            >
+              Spacecraft
+            </button>
           </div>
         </nav>
       )}
@@ -384,6 +425,7 @@ export default function App() {
         {MODEL_CREDIT}
         {compare && <span className="credit__line">{COMPARE_CREDIT}</span>}
         {libertyUp && <span className="credit__line">{LIBERTY_COMPARE.credit}</span>}
+        {spacecraft && <span className="credit__line">{SPACECRAFT_VIEW.credit}</span>}
       </div>
 
       {slideIndex !== null && (

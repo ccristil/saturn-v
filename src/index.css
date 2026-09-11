@@ -318,6 +318,9 @@ canvas {
 .hud--open .hud__items .hud-btn:nth-child(3) {
   transition-delay: 90ms, 90ms, 0s, 0s, 0s, 0s;
 }
+.hud--open .hud__items .hud-btn:nth-child(4) {
+  transition-delay: 135ms, 135ms, 0s, 0s, 0s, 0s;
+}
 
 /* --- HUD buttons — LeaderFactor light-glass pills on dark --- */
 .hud-btn {
@@ -338,13 +341,15 @@ canvas {
   border-color: rgba(255, 255, 255, 0.65);
 }
 .explode-btn.is-active,
-.compare-btn.is-active {
+.compare-btn.is-active,
+.spacecraft-btn.is-active {
   background: var(--accent-fill);
   border-color: transparent;
   color: #fff;
 }
 .explode-btn.is-active:hover,
-.compare-btn.is-active:hover {
+.compare-btn.is-active:hover,
+.spacecraft-btn.is-active:hover {
   background: var(--accent-fill);
   filter: brightness(1.12);
 }

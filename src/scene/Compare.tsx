@@ -13,13 +13,13 @@ import { Dimension } from './Dimension'
 // their real heights. Move the guest's model, or re-tune the Saturn V's assembly, and
 // the comparison stays true without anyone editing a magic number.
 
-const SATURN_V_M = 110.6 // real height of the Apollo Saturn V, launch escape tower included
+export const SATURN_V_M = 110.6 // real height of the Apollo Saturn V, launch escape tower included
 const M_TO_FT = 3.28084
 
 // If the Saturn V can't be measured (renamed nodes, model swap), fall back to the
 // height it had when this was written rather than rendering a wrong-size rocket
 // silently — and say so in the console.
-const SATURN_V_UNITS_FALLBACK = 115
+export const SATURN_V_UNITS_FALLBACK = 115
 const GROUND_Y_FALLBACK = 0
 const SATURN_V_LEFT_FALLBACK = -10 // the S-IC's radius
 
@@ -32,7 +32,7 @@ function smootherstep(t: number) {
 
 // Measure the assembled Saturn V by finding a node only it has, then walking up to
 // the group R3F mounted it in. Y-spin doesn't affect the height, so this is stable.
-function measureSaturnV(root: Object3D) {
+export function measureSaturnV(root: Object3D) {
   const marker = root.getObjectByName('S-IC')
   if (!marker) return null
   let node: Object3D = marker
