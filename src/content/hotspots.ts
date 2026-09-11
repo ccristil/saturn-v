@@ -113,9 +113,12 @@ export const hotspots: Hotspot[] = [
     subtitle: "Placeholder hook — five F-1 engines, one very hard problem.",
     bracket: ["S-IC"], // the whole first stage, engine bells to forward skirt
     span: [0, 42],
+    // The whole stage, F-1 bells to forward skirt (y 0→42). The target sits off
+    // the axis toward camera-right, so the stage lands in the open area left of
+    // the card instead of behind it.
     camera: {
-      position: [13, 10, 32],
-      lookAt: [0, 3, 0],
+      position: [51, 24, 74],
+      lookAt: [17, 21, -7],
     },
     body: [
       "HUGE FORCE. These engines each generate 1.5 million pounds of thrust, and they burn through 3 tons of propellant every second. So all 5 engines could suspend 1,000 African elephants or 25 blue whales in the air at once. ",
