@@ -5,6 +5,7 @@ import { Group, Matrix4, Quaternion, Vector3, type Mesh, type Object3D } from 't
 import { applyLivery } from './livery'
 import { buildCSM, buildLMTunnel, FLOOD_STOWED, HGA_STOWED, LM_HATCH_Y, SM_AFT_Y } from './csm'
 import { gearFold, type GearFold } from './lmgear'
+import { IU_RADIUS_M } from './nosecone'
 import type { CamPose } from './CameraRig'
 
 // The Apollo spacecraft coming out of the rocket: Apollo 11's transposition, docking and
@@ -82,7 +83,6 @@ function trimDockingAntennas(root: Object3D): void {
 
 // --- The choreography: metres, in the adapter's frame (y up from the Instrument Unit's top,
 // on the rocket's axis) ---
-const IU_RADIUS_M = 3.302 // the real Instrument Unit; nosecone.ts sizes the adapter off the model's
 const CLOCK = 20 * DEG // the CSM's roll on the rocket
 const LES_POP_M = 4 // beat 1: the escape tower pops clear of the CM it covered,
 const LES_UP_M = 45 // then accelerates off,
@@ -210,7 +210,8 @@ function poseNose(rig: Rig, u: number): void {
   rig.noseCSM.visible = u <= 0 // the detailed CSM takes over as soon as anything moves
   const s = clamp01(u)
   rig.les.visible = u < 1
-  // the pop has to be near-instant — until the cover is off, the CM pokes through it
+  // the pop is near-instant: the cover fits the CM, but the detailed CSM's umbilical housing
+  // (on the far side) stands proud of its skirt until it's off
   const rise = LES_POP_M * smootherstep(clamp01(s / 0.06)) + (LES_UP_M - LES_POP_M) * clamp01((s - 0.06) / 0.94) ** 2
   rig.les.position.set(rig.lesRest.x + LES_ACROSS_M * k * s * s, rig.lesRest.y + rise * k, rig.lesRest.z)
   rig.les.rotation.z = -LES_TILT * s * s

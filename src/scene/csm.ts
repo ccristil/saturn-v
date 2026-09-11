@@ -61,6 +61,7 @@ const H = {
   shoulder: 7.572, // the CM's widest point
   coneStart: 7.679, // where the 33° sidewall begins
   seam: 9.148, // crew-compartment / forward heat shield joint (X_C ≈ 81)
+  towerWell: 9.22, // the four launch-escape-tower wells, where the tower's legs bolted on
   flatTop: 9.754, // the small flat top around the docking ring
   handle: 9.83, // EVA ring handle (X_C 108)
   dock: 9.887, // docking-ring face (X_C 110.25) — the LM's tunnel ring butts against it
@@ -74,9 +75,15 @@ export const SM_AFT_Y = H.smAft
 // The folding booms' pivot rotation.x when stowed for launch (0 = deployed, as built).
 export const HGA_STOWED = Math.PI / 2 // high-gain antenna: boom straight aft, beside the engine bell
 export const FLOOD_STOWED = 115 * DEG // EVA floodlight: folded down flat against the fairing
+// What the rocket's stand-in (nosecone.ts) needs so its service module matches this one and
+// its boost protective cover fits over this command module.
+export const SM_RADIUS = R
+export const CM_STATIONS = H
+export const CM_HALF_ANGLE = 33 * DEG // the sidewall's half-angle
+export const CM_SHOULDER_TUBE = 0.196 // the toroidal shoulder's section radius (7.7 in)
 
-const TAN = Math.tan(33 * DEG)
-const coneR = (h: number) => 1.924 - TAN * (h - H.coneStart) // 33° half-angle sidewall
+const TAN = Math.tan(CM_HALF_ANGLE)
+export const coneR = (h: number) => 1.924 - TAN * (h - H.coneStart) // 33° half-angle sidewall
 const TOP_R = coneR(H.flatTop) // ≈ 0.58 m
 
 // --- Clock positions (phi, from the hatch toward +Y) ---
@@ -487,7 +494,8 @@ export function buildCSM(): Group {
     [1.356, H.heatShield + 0.2],
     [1.651, H.heatShield + 0.3],
   ]
-  for (let a = -66.8; a <= 33.01; a += 9.98) cm.push([1.76 + 0.196 * Math.cos(a * DEG), H.shoulder + 0.196 * Math.sin(a * DEG)])
+  for (let a = -66.8; a <= 33.01; a += 9.98)
+    cm.push([R - CM_SHOULDER_TUBE + CM_SHOULDER_TUBE * Math.cos(a * DEG), H.shoulder + CM_SHOULDER_TUBE * Math.sin(a * DEG)])
   cm.push([coneR(8.4), 8.4], [coneR(9.1), 9.1], [coneR(H.flatTop - 0.008), H.flatTop - 0.008], [TOP_R, H.flatTop], [TOP_R - 0.01, H.flatTop], [0.437, H.flatTop])
   add('mylar', lathe(cm, 128))
   ring(coneR(H.seam) + 0.003, 0.006, H.seam, 'panel', 96) // forward heat shield joint
@@ -504,7 +512,7 @@ export function buildCSM(): Group {
   // four launch-escape-tower wells just above the joint
   for (let k = 0; k < 4; k++) {
     const phi = (45 + k * 90) * DEG
-    add('black', new BoxGeometry(0.12, 0.12, 0.02), M(conePt(phi, 9.22, 0.003), onCone(phi)))
+    add('black', new BoxGeometry(0.12, 0.12, 0.02), M(conePt(phi, H.towerWell, 0.003), onCone(phi)))
   }
   // sextant and scanning-telescope ports, opposite the hatch just aft of the forward heat shield
   for (const phi of [173.4, 186.6].map((d) => d * DEG)) add('black', new CircleGeometry(0.09, 20), M(conePt(phi, 8.98, 0.005), onCone(phi)))
