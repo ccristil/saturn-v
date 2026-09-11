@@ -6,11 +6,15 @@ import {
   Vector3,
   Quaternion,
   Matrix4,
+  CircleGeometry,
   CylinderGeometry,
   ConeGeometry,
   TorusGeometry,
   MeshStandardMaterial,
+  DoubleSide,
+  FrontSide,
   type Material,
+  type Side,
 } from 'three'
 
 // The devPilot GLB is a launch-vehicle-only model: its topmost geometry is the
@@ -28,6 +32,13 @@ import {
 // at runtime and stays flush with the real ring — it can't drift the way hand-typed
 // coordinates can. Attached as a child of the `Instrument_Unit` node so it rides the
 // explode animation and dims with isolate exactly like the top stage it sits on.
+//
+// It's built to come apart, for the Spacecraft button's transposition and docking
+// (Spacecraft.tsx drives it): the adapter's lower 7 ft is a fixed ring that stays on the
+// S-IVB and its upper 21 ft is four panels hinged at their base, the black band along their
+// top edge; the service module + interface ring are one group (`Nose_CSM`, swapped for the
+// detailed CSM while that plays) and the cover + escape tower another (`LES`, jettisoned).
+// At rest every piece sits exactly where the single-piece version did.
 
 // Palette — kept close to the model's own body so the new top reads as one vehicle,
 // not a bolted-on gray cap. The escape tower is a lightened metallic gray (a truss,
@@ -38,6 +49,7 @@ const BAND = 0x2b313b // dark bands/rings — charcoal, not pure black
 const TOWER = 0x969ca4 // escape tower truss — lightened metallic gray
 const MOTOR = 0xd7d0c2 // escape solid-rocket motor — pale tan canister
 const PROBE = 0x3d434c // nose probe / Q-ball — dark, thin
+const DECK = 0x4b5058 // the S-IVB's forward deck under the LM — only seen with the adapter open
 
 // Smooth stacked sections, bottom → top. A `frustum` is a (possibly straight)
 // cylinder section; a `cone` tapers to a point. Thin frustums double as dark bands.
@@ -66,6 +78,12 @@ const LOWER: Piece[] = [
   // Boost Protective Cover — the clean white cone over the command module.
   { kind: 'frustum', rBottom: 0.6, rTop: 0.16, height: 1.55, gap: 0, color: COVER, metalness: 0.28, roughness: 0.5 },
 ]
+
+// The adapter's split: a fixed lower ring stays with the S-IVB, four panels above. Drawn
+// shorter than the real one (7 ft of 28): the LM model's stowed legs are longer than the
+// real LM's, so it perches on this ring's rim rather than standing inside it.
+const SLA_FIXED = 0.1
+const PANEL_SPAN = Math.PI / 2
 
 // Escape tower (open truss) geometry, all × R.
 const TOWER_H = 2.6
@@ -104,26 +122,83 @@ export function addSpacecraftTop(root: Object3D): void {
 
   const group = new Group()
   group.name = 'Spacecraft_Top'
+  const material = (p: Piece, side: Side = FrontSide) =>
+    new MeshStandardMaterial({ color: p.color, metalness: p.metalness, roughness: p.roughness, side })
+  const [sla, band, sm, ring, cover] = LOWER
 
-  // --- Smooth stacked sections: SLA → cover ---
-  let cursor = 0 // world units above the IU top, running upward
-  for (const p of LOWER) {
+  // --- Spacecraft-LM Adapter: a fixed lower ring + four panels (double-sided — once they
+  // open, their insides show) ---
+  const slaH = sla.height * R
+  const bandH = band.height * R
+  const fixedH = SLA_FIXED * slaH
+  const rAt = (y: number) => (sla.rBottom + ((sla.rTop - sla.rBottom) * y) / slaH) * R
+  const slaMat = material(sla, DoubleSide)
+  const fixed = new Mesh(new CylinderGeometry(rAt(fixedH), rAt(0), fixedH, 48, 1, true), slaMat)
+  fixed.name = 'SLA_Fixed'
+  fixed.position.y = fixedH / 2
+  group.add(fixed)
+  const deck = new Mesh(new CircleGeometry(rAt(0), 48), new MeshStandardMaterial({ color: DECK, metalness: 0.3, roughness: 0.7 }))
+  deck.name = 'SLA_Deck'
+  deck.rotation.x = -Math.PI / 2
+  deck.position.y = 0.01 * R
+  group.add(deck)
+  // Each panel hangs from a pivot on the chord between its bottom corners, so it swings out
+  // about that line (rotation.x of `SLA_Panel_k_Open`) with its corners staying put.
+  const bandMat = material(band, DoubleSide)
+  const panelH = slaH - fixedH
+  const chord = rAt(fixedH) * Math.cos(PANEL_SPAN / 2)
+  for (let k = 0; k < 4; k++) {
+    const phi = PANEL_SPAN / 2 + k * PANEL_SPAN
+    const hinge = new Group()
+    hinge.name = `SLA_Panel_${k}`
+    hinge.position.set(Math.sin(phi) * chord, fixedH, Math.cos(phi) * chord)
+    hinge.rotation.y = phi
+    hinge.userData.rest = hinge.position.clone()
+    const open = new Group()
+    open.name = `SLA_Panel_${k}_Open`
+    const arc = (rTop: number, rBottom: number, h: number, y: number, mat: Material) => {
+      const geo = new CylinderGeometry(rTop, rBottom, h, 12, 1, true, -PANEL_SPAN / 2, PANEL_SPAN)
+      geo.translate(0, y + h / 2, -chord)
+      open.add(new Mesh(geo, mat))
+    }
+    arc(rAt(slaH), rAt(fixedH), panelH, 0, slaMat)
+    arc(band.rTop * R, band.rBottom * R, bandH, panelH, bandMat)
+    hinge.add(open)
+    group.add(hinge)
+  }
+
+  // --- Service module + CM interface ring, then the boost protective cover ---
+  let cursor = slaH + bandH // world units above the IU top, running upward
+  const stack = (p: Piece, parent: Group, base = 0) => {
     const h = p.height * R
     const geo =
       p.kind === 'cone'
         ? new ConeGeometry(p.rBottom * R, h, 48)
         : new CylinderGeometry(p.rTop * R, p.rBottom * R, h, 48)
-    const mat = new MeshStandardMaterial({ color: p.color, metalness: p.metalness, roughness: p.roughness })
-    const mesh = new Mesh(geo, mat)
+    const mesh = new Mesh(geo, material(p))
     cursor += p.gap * R
-    mesh.position.y = cursor + h / 2
-    group.add(mesh)
+    mesh.position.y = cursor + h / 2 - base
+    parent.add(mesh)
     cursor += h
   }
+  const noseCSM = new Group()
+  noseCSM.name = 'Nose_CSM'
+  stack(sm, noseCSM)
+  stack(ring, noseCSM)
+  group.add(noseCSM)
+  // The escape system is one group with its origin at the cover's base, so it can fly off
+  // and pitch over about its own foot.
+  const les = new Group()
+  les.name = 'LES'
+  const lesBase = cursor
+  les.position.y = lesBase
+  les.userData.rest = les.position.clone()
+  stack(cover, les, lesBase)
+  group.add(les)
 
   // --- Launch Escape tower: open A-frame lattice (4 tapering legs + cross rings) ---
   const towerMat = new MeshStandardMaterial({ color: TOWER, metalness: 0.6, roughness: 0.45 })
-  const yBottom = cursor - TOWER_OVERLAP * R
+  const yBottom = cursor - TOWER_OVERLAP * R - lesBase
   const yTop = yBottom + TOWER_H * R
   const baseH = TOWER_BASE * R
   const topH = TOWER_TOP * R
@@ -135,7 +210,7 @@ export function addSpacecraftTop(root: Object3D): void {
     [0, -1],
   ]) {
     strut(
-      group,
+      les,
       new Vector3(ax * baseH, yBottom, az * baseH),
       new Vector3(ax * topH, yTop, az * topH),
       LEG_R * R,
@@ -146,10 +221,10 @@ export function addSpacecraftTop(root: Object3D): void {
   for (const f of [0.06, 0.32, 0.58, 0.84, 1]) {
     const ry = yBottom + f * (yTop - yBottom)
     const rr = baseH + (topH - baseH) * f
-    const ring = new Mesh(new TorusGeometry(rr, RING_TUBE * R, 8, 20), towerMat)
-    ring.rotation.x = Math.PI / 2
-    ring.position.y = ry
-    group.add(ring)
+    const ringMesh = new Mesh(new TorusGeometry(rr, RING_TUBE * R, 8, 20), towerMat)
+    ringMesh.rotation.x = Math.PI / 2
+    ringMesh.position.y = ry
+    les.add(ringMesh)
   }
 
   // --- Escape motor canister + nose probe, stacked above the tower ---
@@ -158,15 +233,19 @@ export function addSpacecraftTop(root: Object3D): void {
   const motorH = 0.95 * R
   const motor = new Mesh(new CylinderGeometry(0.13 * R, 0.15 * R, motorH, 24), motorMat)
   motor.position.y = yTop + motorH / 2
-  group.add(motor)
+  les.add(motor)
   const capH = 0.3 * R
   const cap = new Mesh(new ConeGeometry(0.13 * R, capH, 24), motorMat)
   cap.position.y = yTop + motorH + capH / 2
-  group.add(cap)
+  les.add(cap)
   const probeH = 0.7 * R
   const probe = new Mesh(new CylinderGeometry(0.012 * R, 0.03 * R, probeH, 10), probeMat)
   probe.position.y = yTop + motorH + capH + probeH / 2
-  group.add(probe)
+  les.add(probe)
+
+  // The layout Spacecraft.tsx needs to fit the real spacecraft to this adapter (world units,
+  // above the IU top): R sets its scale, the band's top is where the service module sits.
+  group.userData.tde = { R, fixedTop: fixedH, bandTop: slaH + bandH }
 
   // --- Parent the assembly to the IU node, preserving the desired world transform ---
   // Desired world transform: sit on the IU top center, world-up, unit scale.
