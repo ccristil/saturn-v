@@ -266,7 +266,7 @@ export const hotspots: Hotspot[] = [
     id: "s4b-restart",
     order: 3,
     tag: "03",
-    title: "PLACEHOLDER — the restart",
+    title: "Stage 3 (S-IVB)",
     subtitle: "Placeholder hook — one engine has to light twice.",
     // The stage plus the Instrument Unit ring that rides on top of it. Name the
     // IU's leaf mesh, not "Instrument_Unit": nosecone.ts parents the rebuilt
