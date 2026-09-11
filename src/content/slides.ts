@@ -236,10 +236,8 @@ export const slides: Slide[] = [
   },
   {
     id: "why-saturn-v",
-    eyebrow: "The case",
     title: "Why the Saturn V",
-    subtitle:
-      "Three reasons this machine is still worth half an hour of your afternoon.",
+    subtitle: "Three more reasons this machine is still cool.",
     image: {
       src: "img/saturn-v-in-flight.jpg",
       alt: "A Saturn V climbing away from the pad, first stage burning",
