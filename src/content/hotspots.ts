@@ -98,20 +98,63 @@ export type SpacecraftBeat = {
   name: string; // which move — for whoever re-times it, never shown
   seconds: number;
   hold: number;
-  camera: { position: [number, number, number]; lookAt: [number, number, number] };
+  camera: {
+    position: [number, number, number];
+    lookAt: [number, number, number];
+  };
 };
-export const SPACECRAFT_VIEW: { model: string; credit: string; rollSpeed: number; beats: SpacecraftBeat[] } = {
+export const SPACECRAFT_VIEW: {
+  model: string;
+  credit: string;
+  rollSpeed: number;
+  beats: SpacecraftBeat[];
+} = {
   model: "models/lunar-module.glb",
   credit: "“Apollo 11 Lunar Module” by CMFDesign · CC BY 4.0",
   rollSpeed: 0.1, // radians per second, once in lunar orbit — about a turn a minute
   beats: [
-    { name: "stacked", seconds: 0, hold: 1.2, camera: { position: [16, 103, 45], lookAt: [0, 101, 0] } },
-    { name: "tower off", seconds: 2.2, hold: 0.4, camera: { position: [16, 103, 45], lookAt: [0, 101, 0] } },
-    { name: "separate", seconds: 4, hold: 0.4, camera: { position: [17, 100.5, 44], lookAt: [0, 98, 0] } },
-    { name: "turn around", seconds: 4, hold: 0.3, camera: { position: [13, 108, 34], lookAt: [0, 106, 0] } },
-    { name: "dock", seconds: 4, hold: 0.6, camera: { position: [14, 98, 36], lookAt: [0, 95, 0] } },
-    { name: "extract", seconds: 3.5, hold: 0.4, camera: { position: [16, 104, 42], lookAt: [0, 101, 0] } },
-    { name: "lunar orbit", seconds: 3.5, hold: 0, camera: { position: [19, 115, 32], lookAt: [5, 112.5, 0] } },
+    {
+      name: "stacked",
+      seconds: 0,
+      hold: 1.2,
+      camera: { position: [16, 103, 45], lookAt: [0, 101, 0] },
+    },
+    {
+      name: "tower off",
+      seconds: 2.2,
+      hold: 0.4,
+      camera: { position: [16, 103, 45], lookAt: [0, 101, 0] },
+    },
+    {
+      name: "separate",
+      seconds: 4,
+      hold: 0.4,
+      camera: { position: [17, 100.5, 44], lookAt: [0, 98, 0] },
+    },
+    {
+      name: "turn around",
+      seconds: 4,
+      hold: 0.3,
+      camera: { position: [13, 108, 34], lookAt: [0, 106, 0] },
+    },
+    {
+      name: "dock",
+      seconds: 4,
+      hold: 0.6,
+      camera: { position: [14, 98, 36], lookAt: [0, 95, 0] },
+    },
+    {
+      name: "extract",
+      seconds: 3.5,
+      hold: 0.4,
+      camera: { position: [16, 104, 42], lookAt: [0, 101, 0] },
+    },
+    {
+      name: "lunar orbit",
+      seconds: 3.5,
+      hold: 0,
+      camera: { position: [19, 115, 32], lookAt: [5, 112.5, 0] },
+    },
   ],
 };
 
@@ -120,8 +163,8 @@ export const hotspots: Hotspot[] = [
     id: "f1-engines",
     order: 1,
     tag: "01",
-    title: "The engine that ate itself",
-    subtitle: "Placeholder hook — five F-1 engines, one very hard problem.",
+    title: "First Stage (S-IC)",
+    subtitle: "Five F-1 engines, one very hard problem.",
     bracket: ["S-IC"], // the whole first stage, engine bells to forward skirt
     span: [0, 42],
     // The whole stage, F-1 bells to forward skirt (y 0→42). The target sits off
@@ -132,8 +175,9 @@ export const hotspots: Hotspot[] = [
       lookAt: [17, 21, -7],
     },
     body: [
-      "HUGE FORCE. These engines each generate 1.5 million pounds of thrust, and they burn through 3 tons of propellant every second. So all 5 engines could suspend 1,000 African elephants or 25 blue whales in the air at once. ",
+      "HUGE FORCE. Each F-1 generates ~1.5 million pounds of thrust, and they burn through 3 tons of propellant every second. So all 5 engines could suspend 1,000 African elephants or 25 blue whales in the air at once. ",
       "THEY MOVED. The 4 outer engines gimbal (swivel) to steer the rocket, while the center engine is fixed. The gimbaling engines move the whole 6.5 million pound rocket by just a few degrees, but that’s enough to keep it on course.",
+      "TIME. The F-1s burn for 2 minutes and 41 seconds, then the stage separates and falls into the Atlantic. The next stage takes over, and the Saturn V keeps climbing.",
     ],
     specs: [
       { label: "Thrust, each", value: "1.5M lbf" },
@@ -177,7 +221,7 @@ export const hotspots: Hotspot[] = [
     id: "s2-hydrogen",
     order: 2,
     tag: "02",
-    title: "PLACEHOLDER — the mass problem",
+    title: "Second Stage (S-II)",
     subtitle: "Placeholder hook — every kilogram was a negotiation.",
     // The interstage below it (dropped ~30 s into the S-II burn) and the one above
     // it (left behind at S-IVB separation) both fly with the S-II, so its bracket
@@ -190,8 +234,8 @@ export const hotspots: Hotspot[] = [
       lookAt: [0, 57, 0],
     },
     body: [
-      "PLACEHOLDER. The second stage flew on liquid hydrogen, which is light on paper and miserable in practice — it boils at 20 K and it is bulky, so the tank has to be huge and it has to be insulated.",
-      "PLACEHOLDER. The common bulkhead: one shared wall between the LOX and LH2 tanks instead of two walls and the gap between them. Presenter writes the real story here.",
+      "FUEL. The second stage flew on liquid hydrogen, which is light but took up tons of space. It boils around -420°F and it's bulky, so the tank has to be huge and it has to be insulated.",
+      "ENGINES. This stage had 5 J-2 engines, which were smaller than the F-1s but still produced 230,000 pounds of thrust each. The J-2s burned LH2 and LOX, and they could be restarted in space. ",
     ],
     specs: [
       { label: "Engines", value: "5 × J-2" },
