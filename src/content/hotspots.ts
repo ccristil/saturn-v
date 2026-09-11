@@ -286,7 +286,7 @@ export const hotspots: Hotspot[] = [
     tag: "03",
     kind: "stage",
     title: "Stage 3 (S-IVB)",
-    subtitle: "Placeholder hook — one engine has to light twice.",
+    subtitle: "The only engine that lit twice.",
     // The stage plus the Instrument Unit ring that rides on top of it. Name the
     // IU's leaf mesh, not "Instrument_Unit": nosecone.ts parents the rebuilt
     // spacecraft to that node, so its bounds would run up to the escape tower.
@@ -298,8 +298,8 @@ export const hotspots: Hotspot[] = [
       lookAt: [0, 76, 0],
     },
     body: [
-      "PLACEHOLDER. Everything below this fires once, on a pad, with the whole world watching. This stage has to burn to reach orbit, shut down, coast, and then relight — cold, hours later, on the far side of a checklist.",
-      "PLACEHOLDER. That second burn is translunar injection. There is no second attempt. Presenter writes the real story here.",
+      "LIT TWICE. Everything below this fires once, on a pad, with the whole world watching. This stage has to burn to reach orbit, shut down, coast, and then relight — cold, hours later, on the far side of a checklist.",
+      "TO THE MOON. That second burn is translunar injection. This trajectory was so precise that if none of the rockets after this worked, they would ride the moons gravity back to earth without firing any rockets. The Apollo 13 did a version of this after an oxygen tank exploded in the service module.",
     ],
     specs: [
       { label: "Engines", value: "1 × J-2" },
