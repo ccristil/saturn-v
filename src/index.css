@@ -163,10 +163,10 @@ canvas {
   color: var(--ink);
 }
 /* The card's one action (the spacecraft's "What came home?"): the HUD's glass pill, a size up
-   for the room, pinned to the foot of the card. Two classes, to win over .hud-btn below. */
+   for the room, pinned to the foot of the card and centred. Two classes, to win over .hud-btn below. */
 .card__cta.hud-btn {
   margin-top: auto;
-  align-self: flex-start;
+  align-self: center;
   font-size: 18px;
   padding: 16px 28px;
 }
