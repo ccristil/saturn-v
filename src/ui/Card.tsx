@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { Hotspot } from '../content/hotspots'
+import { Clip } from './Clip'
+
+type Media = NonNullable<Hotspot['images']>[number] | NonNullable<Hotspot['clips']>[number]
+const keyOf = (m: Media) => ('youtube' in m ? `${m.youtube}@${m.from}` : m.src)
 
 export function Card({ hotspot }: { hotspot: Hotspot | null }) {
   const [shot, setShot] = useState(0)
@@ -9,8 +13,11 @@ export function Card({ hotspot }: { hotspot: Hotspot | null }) {
     setShot(0)
   }, [hotspot?.id])
 
-  const images = hotspot?.images
-  const count = images?.length ?? 0
+  // Photos, then clips — one gallery, shown one at a time.
+  const media: Media[] = [...(hotspot?.images ?? []), ...(hotspot?.clips ?? [])]
+  const count = media.length
+  // Video is 16:9: a gallery of nothing but clips takes that shape instead of the photos' 4:3.
+  const wide = count > 0 && media.every((m) => 'youtube' in m)
 
   return (
     <aside className={hotspot ? 'card card--open' : 'card'} aria-hidden={hotspot === null}>
@@ -34,20 +41,24 @@ export function Card({ hotspot }: { hotspot: Hotspot | null }) {
               ))}
             </dl>
           )}
-          {images && count > 0 && (
+          {count > 0 && (
             <div className="card__gallery">
-              <div className="card__gallery-stage">
-                {images.map((img, i) => (
+              <div className={`card__gallery-stage${wide ? ' card__gallery-stage--wide' : ''}`}>
+                {media.map((m, i) => (
                   <figure
                     className={`card__gallery-item${i === shot ? ' is-shown' : ''}`}
-                    key={img.src}
+                    key={keyOf(m)}
                     aria-hidden={i !== shot}
                   >
-                    <img
-                      className="card__gallery-image"
-                      src={import.meta.env.BASE_URL + img.src}
-                      alt={img.alt}
-                    />
+                    {'youtube' in m ? (
+                      <Clip clip={m} shown={i === shot} />
+                    ) : (
+                      <img
+                        className="card__gallery-image"
+                        src={import.meta.env.BASE_URL + m.src}
+                        alt={m.alt}
+                      />
+                    )}
                   </figure>
                 ))}
                 {count > 1 && (
@@ -55,7 +66,7 @@ export function Card({ hotspot }: { hotspot: Hotspot | null }) {
                     <button
                       type="button"
                       className="card__gallery-nav card__gallery-nav--prev"
-                      aria-label="Previous photo"
+                      aria-label="Previous"
                       onClick={() => setShot((s) => (s - 1 + count) % count)}
                     >
                       ‹
@@ -63,7 +74,7 @@ export function Card({ hotspot }: { hotspot: Hotspot | null }) {
                     <button
                       type="button"
                       className="card__gallery-nav card__gallery-nav--next"
-                      aria-label="Next photo"
+                      aria-label="Next"
                       onClick={() => setShot((s) => (s + 1) % count)}
                     >
                       ›
@@ -72,15 +83,15 @@ export function Card({ hotspot }: { hotspot: Hotspot | null }) {
                 )}
               </div>
               <div className="card__gallery-foot">
-                <p className="card__gallery-credit">{images[shot].credit}</p>
+                <p className="card__gallery-credit">{media[shot]?.credit}</p>
                 {count > 1 && (
                   <div className="card__gallery-dots">
-                    {images.map((img, i) => (
+                    {media.map((m, i) => (
                       <button
                         type="button"
-                        key={img.src}
+                        key={keyOf(m)}
                         className={`card__gallery-dot${i === shot ? ' is-active' : ''}`}
-                        aria-label={`Show photo ${i + 1}`}
+                        aria-label={`Show ${i + 1} of ${count}`}
                         onClick={() => setShot(i)}
                       />
                     ))}

@@ -75,8 +75,17 @@ export type Hotspot = {
   };
   body: string[]; // paragraphs, ~500-600 words total
   specs?: { label: string; value: string }[];
-  image?: { src: string; alt: string; credit: string };
+  images?: { src: string; alt: string; credit: string }[]; // cycled in the card's gallery
+  clips?: Clip[]; // YouTube snippets, same gallery after the images; each plays on click
   isolate?: string[]; // stage node names to keep lit; everything else dims
+};
+
+export type Clip = {
+  youtube: string; // video id (youtu.be/<id>)
+  from: string; // "m:ss", as YouTube shows it
+  to: string;
+  label: string; // on the poster
+  credit: string;
 };
 ```
 
@@ -144,7 +153,8 @@ src/
   map/
     assembly-map.html          # (in public/) standalone OpenLayers map of where each stage was built + how it reached KSC; embedded as a slide via `map: { src }`
   ui/
-    Card.tsx                   # the popup panel (DOM overlay)
+    Card.tsx                   # the popup panel (DOM overlay); one gallery for `images` + `clips`
+    Clip.tsx                   # a YouTube snippet in that gallery: poster until clicked, then plays muted `from` → `to` and returns to the poster; a Full screen pill puts the clip element itself in full screen (Esc backs out of full screen only)
     Progress.tsx               # 01 · 02 · 03 indicator
     confetti.ts                # dependency-free canvas burst (side cannons) for a slide payoff beat
     flyby.ts                   # sends an image across the top of the frame (the eagle gif) — CSS-animated
@@ -289,6 +299,8 @@ _Update this as you go — it's what a fresh session reads first._
       Three gotchas worth keeping: giving the basemap its own `className` splits OL's single composited canvas into one per layer, so an opaque `background` on `canvas` makes the vector layer paint over the tiles (it belongs on `.ol-viewport`); a custom `className` _replaces_ `ol-layer`, which carries the container's sizing; and OL writes `z-index: 0` **inline** on `.ol-overlaycontainer-stopevent`, which starts a stacking context — so a popup can't clear the title/legend from inside it however high its own z-index. The container is raised instead (`!important`, to beat the inline style), and popups are opaque (`--panel-solid`) rather than 92% so the title underneath can't ghost through them. Coordinates were refined from the supplied set but stay approximate — and the Huntington Beach → SACTO leg is flagged `unverified: true` in the data (renders dimmed, says so in its popup): confirm or delete that one line.
 - [x] **Hotspots 2–5 — machine built, copy PLACEHOLDER.** Bottom → top, so the camera climbs the stack: **02** S-II (the mass problem, `anchor: "S-II"`), **03** S-IVB (the restart in space, `anchor: "S-IVB"` — its own engine `J2005` is hidden under the S-II_Top shroud, so the stage body is the anchor), **04** Instrument Unit (the computer, `anchor: "Instrument_Unit_Metal_0"` — see the two anchor traps above), **05** Spacecraft_Top (the escape tower). Poses derived from the measured extents, then verified headless: all five tags separate at home, arrow nav steps 1→5, ← walks back, Esc closes, build clean.
 - [x] **Three stage hotspots, marked by brackets** — cut to one hotspot per stage: **01** S-IC (keeps the F-1 copy; the camera frames the whole stage, F-1 bells to forward skirt, in the open area left of the card), **02** S-II, **03** S-IVB; the Instrument Unit and escape-tower hotspots are gone (placeholder copy, still in git history). The leader lines are replaced by engineering-drawing ] brackets (`Bracket.tsx` / `Brackets.tsx`): each spans its stage's measured height, the three chain into one column right of the rocket, and all of them hide while a hotspot is open (the card + dimming take over). Verified headless: 3 tags right of the axis at home and after an orbit, 0 px drift after explode → reassemble, → stops at 03, Esc brings them back, build clean.
+- [x] **YouTube clips in the card** — a hotspot can carry `clips: Clip[]`, shown in the same gallery as `images` (after them; a clips-only gallery goes 16:9). S-II carries two from NasaHD's "Saturn 5 Launch HD" (`pLVavhJwKwk`): 0:00–0:25 stage 1 separation, 1:35–1:55 interstage ring separation. `ui/Clip.tsx` shows YouTube's thumbnail until clicked, then plays through the IFrame Player API (YouTube's own script, loaded on demand), muted — the footage is silent. The iframe is `pointer-events: none` + `tabIndex -1`, so a click never pulls focus out of the app and ←/→/Esc keep working mid-clip (verified); paging, changing hotspot or closing the card destroys the player; a second click while it's starting is ignored; offline, the poster says "Couldn't load the clip — click to retry". **YouTube's chrome** (title bar, centre pause icon, "More videos", logo) shows for ~4 s after _any_ playback start, seek, pause or resume — measured headless. So the player starts up to 4 s early under the poster and the poster lifts at `from` (no seek: a seek brings the chrome back), and the poster fades back in 0.5 s before `to`, so the end screen never shows. A clip starting before 0:04 has no room before it: **the 0:00 clip shows YouTube's chrome for its first ~4 s.** Needs wifi.
+- [x] **S-IVB clip + full screen** — **03** S-IVB carries the same film's 2:06–2:30 (the S-II falls away and the S-IVB flies off; there's room for the 4 s pre-roll, so it comes up clean). Every clip has a **Full screen** pill in its top-right corner: `requestFullscreen()` on the `.clip` element itself — the top layer, so it escapes the card's transform and clipping, and the player is never re-mounted, paused or seeked (each would bring YouTube's chrome back). The same click starts an idle clip. **Esc while full screen leaves full screen only** — it's caught in the window's capture phase, before App's Esc would close the card; ←/→ still step hotspots and tear it down. Also fixed: after a hot reload of `Clip.tsx`, YouTube's loader never calls `onYouTubeIframeAPIReady` a second time, so every click spun forever until a page refresh — `loadYouTube` now resolves through `YT.ready()` when the API is already on the page. Verified in real Chrome (Playwright `channel: 'chrome'`): full screen → live, Esc keeps the card and the same player, re-entering and the Exit button don't restart it, ← tears it down, build clean. A clip takes ~5–10 s to appear (embed load + the 4 s pre-roll).
 - [ ] Real copy — **02 and 03** are PLACEHOLDER body text with DRAFT specs; 01 has real body copy but a placeholder subtitle. Presenter writes the actual stories and verifies the numbers.
 - [ ] Remove the temp `PoseLogger` from `App.tsx` before ship.
 - [ ] Optional polish — optional stage labels on the exploded view. (The dive-in tag/card overlap is gone: brackets hide while a hotspot is open.)

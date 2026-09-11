@@ -252,6 +252,185 @@ canvas {
   transform: scale(1.35);
 }
 
+/* --- Card clips (hotspot.clips, Clip.tsx): a YouTube snippet under a poster button.
+   The player itself never takes the pointer — a click inside YouTube's iframe would
+   pull focus out of the app and strand ←/→. --- */
+.card__gallery-stage--wide {
+  aspect-ratio: 16 / 9;
+}
+.clip,
+.clip__player,
+.clip__player iframe,
+.clip__hit,
+.clip__poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.clip__player iframe {
+  border: 0;
+  pointer-events: none;
+}
+.clip__hit {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: none; /* only the clip on show takes clicks */
+}
+.card__gallery-item.is-shown .clip__hit {
+  pointer-events: auto;
+}
+.clip__poster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000 center / cover no-repeat;
+  transition: opacity 320ms ease;
+}
+/* darkens the bottom so the caption holds up on a washed-out projector */
+.clip__poster::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0) 55%);
+}
+.clip--live .clip__poster {
+  opacity: 0;
+}
+.clip__play {
+  position: relative;
+  z-index: 1;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-fill);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition), transform var(--transition);
+}
+.clip__hit:hover .clip__play {
+  background: var(--accent);
+  transform: scale(1.06);
+}
+.clip__play::before {
+  content: '';
+  margin-left: 5px; /* optical centre of the triangle */
+  border-left: 20px solid #fff;
+  border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+}
+.clip__play.is-loading::before {
+  margin: 0;
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: var(--radius-pill);
+  animation: clip-spin 0.8s linear infinite;
+}
+@keyframes clip-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.clip__caption {
+  position: absolute;
+  z-index: 1;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+.clip__label {
+  font: 600 18px/1.2 var(--font-sans);
+  color: #fff;
+}
+.clip__length {
+  flex: none;
+  font: 600 13px/1 var(--font-sans);
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  padding: 5px 8px;
+  border-radius: 6px;
+}
+/* Full-screen toggle (Clip.tsx). The .clip itself goes full screen: the top layer, so it
+   escapes the card's transform and clipping, and the player carries on untouched. */
+.clip__full {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(17, 26, 53, 0.6);
+  color: var(--ink);
+  font: 600 14px/1 var(--font-sans);
+  cursor: pointer;
+  pointer-events: none; /* only the clip on show takes clicks, as with .clip__hit */
+  transition: background var(--transition), border-color var(--transition), opacity var(--transition);
+}
+.card__gallery-item.is-shown .clip__full {
+  pointer-events: auto;
+}
+.clip__full:hover {
+  background: rgba(17, 26, 53, 0.85);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+/* still there while the footage runs, just quieter */
+.clip--live .clip__full:not(:hover) {
+  opacity: 0.6;
+}
+.clip__full svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* In full screen the controls and caption are sized for the room, not the card. */
+.clip:fullscreen .clip__full {
+  top: 28px;
+  right: 28px;
+  padding: 12px 20px;
+  font-size: 18px;
+}
+.clip:fullscreen .clip__full svg {
+  width: 20px;
+  height: 20px;
+}
+.clip:fullscreen .clip__play {
+  transform: scale(1.5);
+}
+.clip:fullscreen .clip__hit:hover .clip__play {
+  transform: scale(1.6);
+}
+.clip:fullscreen .clip__caption {
+  left: 40px;
+  right: 40px;
+  bottom: 36px;
+}
+.clip:fullscreen .clip__label {
+  font-size: 30px;
+}
+.clip:fullscreen .clip__length {
+  font-size: 18px;
+}
+
 /* --- HUD menu (top-left): one Menu pill; the controls roll down from under it --- */
 .hud {
   z-index: 20;

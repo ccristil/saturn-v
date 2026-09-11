@@ -13,7 +13,18 @@ export type Hotspot = {
   body: string[]; // paragraphs
   specs?: { label: string; value: string }[];
   images?: { src: string; alt: string; credit: string }[]; // cycled in the card, one at a time
+  clips?: Clip[]; // YouTube snippets — same gallery, after any images; each plays on click
   isolate?: string[]; // stage node names to keep lit; everything else dims
+};
+
+// A snippet of a YouTube video, played in the card when clicked (muted — the footage is
+// silent). `from`/`to` are timestamps in the video, written the way YouTube shows them.
+export type Clip = {
+  youtube: string; // the video id: youtu.be/<id> or youtube.com/watch?v=<id>
+  from: string; // "m:ss"
+  to: string; // "m:ss"
+  label: string; // on the poster
+  credit: string;
 };
 
 // Model credit — CC BY requires attribution.
@@ -187,6 +198,23 @@ export const hotspots: Hotspot[] = [
       { label: "Propellant", value: "LH2 / LOX" },
       { label: "Burn time", value: "~6 min" },
     ],
+    // "Saturn 5 Launch HD" (NasaHD on YouTube) — NASA's onboard staging film.
+    clips: [
+      {
+        youtube: "pLVavhJwKwk",
+        from: "0:00",
+        to: "0:25",
+        label: "Stage 1 separation",
+        credit: "NASA · via NasaHD on YouTube",
+      },
+      {
+        youtube: "pLVavhJwKwk",
+        from: "1:35",
+        to: "1:55",
+        label: "Interstage ring separation",
+        credit: "NASA · via NasaHD on YouTube",
+      },
+    ],
     isolate: ["S-II"],
   },
 
@@ -214,6 +242,16 @@ export const hotspots: Hotspot[] = [
       { label: "Engines", value: "1 × J-2" },
       { label: "Burns", value: "2 (orbit, then TLI)" },
       { label: "Restart", value: "In vacuum" },
+    ],
+    // Same staging film: the S-II drops away and the S-IVB flies off on its J-2.
+    clips: [
+      {
+        youtube: "pLVavhJwKwk",
+        from: "2:06",
+        to: "2:30",
+        label: "Stage 2 separation",
+        credit: "NASA · via NasaHD on YouTube",
+      },
     ],
     isolate: ["S-IVB"],
   },
