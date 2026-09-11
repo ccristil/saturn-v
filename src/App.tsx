@@ -9,6 +9,7 @@ import { Ground } from './scene/Ground'
 import { Callouts } from './scene/Callouts'
 import { Compare, preloadCompare } from './scene/Compare'
 import { Spacecraft, preloadSpacecraft } from './scene/Spacecraft'
+import { GuestBoundary } from './scene/GuestBoundary'
 import { CameraRig, type CamPose } from './scene/CameraRig'
 import { Card } from './ui/Card'
 import { Progress } from './ui/Progress'
@@ -186,6 +187,9 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Leave browser shortcuts alone: a Cmd+S or Cmd+C reflex mustn't flip the scene
+      // underneath the browser's own dialog.
+      if (e.metaKey || e.ctrlKey || e.altKey) return
       // Presentation deck owns the keyboard while it's up.
       if (slideIndex !== null) {
         if (e.key === 'Escape') exitPresentation()
@@ -274,7 +278,9 @@ export default function App() {
   return (
     <>
       <Canvas
-        camera={{ position: HOME_CAMERA.position, fov: 40 }}
+        // near 1, not the default 0.1: ten times the depth precision for the millimetre
+        // overlays (decals, radiator skins) — no scripted pose comes within 20 units
+        camera={{ position: HOME_CAMERA.position, fov: 40, near: 1 }}
         dpr={[1, 2]}
         // AA + tone mapping are handled by the EffectComposer below, so turn the
         // renderer's own off (otherwise ACES would be applied twice).
@@ -310,19 +316,19 @@ export default function App() {
         >
           <Stack isolateStages={activeHotspot?.isolate} exploded={exploded} spin={heroPreview} />
           {compare && (
-            /* its own boundary: if the model is somehow not warm yet, it must not
-               take the Saturn V down with it */
-            <Suspense fallback={null}>
+            /* its own boundary: if the model is somehow not warm yet, or fails to
+               load, it must not take the Saturn V down with it */
+            <GuestBoundary name="Compare">
               <Compare
                 model={compare.model}
                 heightM={compare.heightM}
                 x={deckGuestX}
                 spin={heroPreview}
               />
-            </Suspense>
+            </GuestBoundary>
           )}
           {libertyUp && (
-            <Suspense fallback={null}>
+            <GuestBoundary name="Liberty">
               <Compare
                 model={LIBERTY_COMPARE.model}
                 heightM={LIBERTY_COMPARE.heightM}
@@ -332,18 +338,18 @@ export default function App() {
                 onSettled={onLibertySettled}
                 labels={LIBERTY_COMPARE.names}
               />
-            </Suspense>
+            </GuestBoundary>
           )}
           {spacecraft && (
             /* floats ~100 units up, far out of the contact-shadow pass, so no re-bake */
-            <Suspense fallback={null}>
+            <GuestBoundary name="Spacecraft">
               <Spacecraft
                 model={SPACECRAFT_VIEW.model}
                 position={SPACECRAFT_VIEW.position}
                 rotation={SPACECRAFT_VIEW.rotation}
                 rollSpeed={SPACECRAFT_VIEW.rollSpeed}
               />
-            </Suspense>
+            </GuestBoundary>
           )}
           <Ground
             bakeKey={compare?.model ?? (libertyUp ? LIBERTY_COMPARE.model : '')}
