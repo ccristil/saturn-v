@@ -4,8 +4,8 @@ export type Hotspot = {
   tag: string; // "01" — shown in the callout marker
   title: string;
   subtitle: string; // one-line hook
-  target: [number, number, number]; // fallback point the leader line hits
-  anchor?: string; // model node name to anchor the leader line to (overrides target at runtime)
+  bracket: string[]; // model nodes the stage's bracket spans — it covers the union of their bounds
+  span: [number, number]; // fallback [bottom, top] y for the bracket, if those nodes aren't in the scene
   camera: {
     position: [number, number, number];
     lookAt: [number, number, number];
@@ -101,8 +101,8 @@ export const hotspots: Hotspot[] = [
     tag: "01",
     title: "The engine that ate itself",
     subtitle: "Placeholder hook — five F-1 engines, one very hard problem.",
-    target: [0, 3, 6],
-    anchor: "F1", // the 5 F-1 engine nodes (F1, F1.001–004) — leader line hits their real center
+    bracket: ["S-IC"], // the whole first stage, engine bells to forward skirt
+    span: [0, 42],
     camera: {
       position: [13, 10, 32],
       lookAt: [0, 3, 0],
@@ -134,8 +134,8 @@ export const hotspots: Hotspot[] = [
   },
 
   // ---------------------------------------------------------------------------
-  // 02–05 walk the vehicle bottom → top, so the camera physically climbs the
-  // stack as the talk progresses: power → mass → precision → the humans.
+  // 01–03 are the three stages, bottom → top, so the camera physically climbs
+  // the stack as the talk progresses.
   // Camera poses are derived from the measured node extents and then verified on
   // screen — they are NOT hand-guessed. At fov 40 the visible height at distance
   // d is 0.728·d, so a feature H units tall fills ~65% of the frame at d ≈ 2.1·H.
@@ -155,8 +155,11 @@ export const hotspots: Hotspot[] = [
     tag: "02",
     title: "PLACEHOLDER — the mass problem",
     subtitle: "Placeholder hook — every kilogram was a negotiation.",
-    target: [0, 53, 0],
-    anchor: "S-II", // second-stage body, measured center y ≈ 53.4
+    // The interstage below it (dropped ~30 s into the S-II burn) and the one above
+    // it (left behind at S-IVB separation) both fly with the S-II, so its bracket
+    // takes them too.
+    bracket: ["Interstage", "S-II", "S-II_Top"],
+    span: [42, 71.4],
     // Centred on the exposed 47.3→65.9, not the 41→65.9 bbox.
     camera: {
       position: [15, 58, 36],
@@ -180,11 +183,11 @@ export const hotspots: Hotspot[] = [
     tag: "03",
     title: "PLACEHOLDER — the restart",
     subtitle: "Placeholder hook — one engine has to light twice.",
-    target: [0, 73, 0],
-    // The S-IVB's own engine (J2005) sits at y 63.9–67.2, tucked under the
-    // S-II_Top shroud — a leader line there points at a covered region. Anchor
-    // the stage body instead.
-    anchor: "S-IVB",
+    // The stage plus the Instrument Unit ring that rides on top of it. Name the
+    // IU's leaf mesh, not "Instrument_Unit": nosecone.ts parents the rebuilt
+    // spacecraft to that node, so its bounds would run up to the escape tower.
+    bracket: ["S-IVB", "Instrument_Unit_Metal_0"],
+    span: [71.4, 83.1],
     // Centred on the exposed 71.4→81.8, not the 63.9→81.8 bbox.
     camera: {
       position: [13, 78, 33],
@@ -200,60 +203,5 @@ export const hotspots: Hotspot[] = [
       { label: "Restart", value: "In vacuum" },
     ],
     isolate: ["S-IVB"],
-  },
-
-  {
-    id: "instrument-unit",
-    order: 4,
-    tag: "04",
-    title: "PLACEHOLDER — the computer",
-    subtitle: "Placeholder hook — the whole brain is a three-foot hoop.",
-    target: [0, 83, 0],
-    // NOT "Instrument_Unit": nosecone.ts parents the rebuilt Spacecraft_Top to
-    // that node, so a Box3 over it swallows the whole spacecraft and the anchor
-    // lands at y ≈ 100 — right on top of hotspot 05's tag. The IU's own leaf
-    // mesh has no children, so it resolves to the real ring at y ≈ 82.5.
-    anchor: "Instrument_Unit_Metal_0",
-    camera: {
-      position: [25, 85, 61],
-      lookAt: [0, 83, 0],
-    },
-    body: [
-      "PLACEHOLDER. The guidance ring that flew the vehicle: IBM built it, it is about three feet tall, and it wraps the top of the third stage.",
-      "PLACEHOLDER. Triple-redundant, and with less memory than the tab you have open. Presenter writes the real story here.",
-    ],
-    specs: [
-      { label: "Built by", value: "IBM" },
-      { label: "Height", value: "~3 ft" },
-      { label: "Diameter", value: "~21.7 ft" },
-    ],
-    // Same reason: isolating "Instrument_Unit" keeps its whole subtree lit,
-    // which now includes the spacecraft. Naming the mesh lights the ring alone.
-    isolate: ["Instrument_Unit_Metal_0"],
-  },
-
-  {
-    id: "escape-tower",
-    order: 5,
-    tag: "05",
-    title: "PLACEHOLDER — the part you hope never fires",
-    subtitle: "Placeholder hook — thrown away on every good flight.",
-    target: [0, 102, 0],
-    // The rebuilt spacecraft + launch escape system (nosecone.ts), y ≈ 83 → 117.
-    anchor: "Spacecraft_Top",
-    camera: {
-      position: [30, 104, 73],
-      lookAt: [0, 102, 0],
-    },
-    body: [
-      "PLACEHOLDER. The lattice tower at the very top is a solid rocket whose only job is to rip the crew capsule off the stack if the vehicle below it fails.",
-      "PLACEHOLDER. On every successful flight it is jettisoned unused. Insurance as a design discipline. Presenter writes the real story here.",
-    ],
-    specs: [
-      { label: "Tower height", value: "~33 ft" },
-      { label: "Escape motor", value: "Solid, ~147k lbf" },
-      { label: "Used in flight", value: "Never" },
-    ],
-    isolate: ["Spacecraft_Top"],
   },
 ];

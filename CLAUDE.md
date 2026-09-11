@@ -9,7 +9,7 @@ It is not a website. It is a presentation instrument. Every decision should be j
 - **Presented:** ~September 11, 2026. Hard deadline, no slip.
 - **Audience:** product engineers and PMs. Technical, but not aerospace people.
 - **Runtime:** localhost for the live talk — `npm run dev`, full screen browser, external display. Also **deployed to GitHub Pages** (`https://ccristil.github.io/saturn-v/`) for a shareable link. The model and all assets are self-hosted, so localhost still works wifi-off.
-- **Shape:** 5 hotspots on the vehicle. Presenter steps through them. Each opens a card with the engineering story.
+- **Shape:** 3 hotspots, one per stage (S-IC, S-II, S-IVB), each marked by a bracket spanning the stage. Presenter steps through them. Each opens a card with the engineering story.
 
 The 3D model is the vehicle for the content, not the point of the project. If time gets tight, the model gets simpler and the content stays.
 
@@ -67,8 +67,8 @@ export type Hotspot = {
   tag: string; // "01" — shown in the callout marker
   title: string;
   subtitle: string; // one-line hook, read aloud-able
-  target: [number, number, number]; // fallback point the leader line hits
-  anchor?: string; // model node name to anchor the leader line to (overrides target at runtime)
+  bracket: string[]; // model nodes the stage's bracket spans (union of their bounds)
+  span: [number, number]; // fallback [bottom, top] y if those nodes aren't in the scene
   camera: {
     position: [number, number, number];
     lookAt: [number, number, number];
@@ -89,8 +89,8 @@ Example (real coords are in the model's own space — see **Model & coordinate s
   tag: "01",
   title: "The engine that ate itself",
   subtitle: "Five F-1 engines, one very hard problem.",
-  target: [0, 3, 6],             // fallback; `anchor` supersedes it
-  anchor: "F1",                  // leader line hits the real F-1 engine cluster (F1, F1.001–004)
+  bracket: ["S-IC"],             // the whole first stage, engine bells to forward skirt
+  span: [0, 42],                 // fallback, used only if the node isn't found
   camera: { position: [13, 10, 32], lookAt: [0, 3, 0] },
   body: [ "..." ],
   specs: [
@@ -101,12 +101,12 @@ Example (real coords are in the model's own space — see **Model & coordinate s
 }
 ```
 
-**`anchor` is the reliable way to place a leader line** — it finds the named node(s) in the live model and points at their true center, so it can't drift the way a hand-typed `target` can. Match is by exact name, or `<anchor>.NNN` — but **that second branch is dead**: the real engine nodes are `F1001`/`J2005`, with no dot, so `anchor: "F1"` resolves to the single centre engine, not the cluster. It reads correctly only because the centre F-1 sits on the axis. `target` is the fallback if the node isn't found.
+**`bracket` is measured, not typed** — `Brackets.tsx` finds the named nodes in the live model and re-measures their union box every frame, so each bracket spans its stage's true height and rides explode/reassemble. Names match exactly (the engine nodes are `F1001`/`J2005` — the FBX conversion stripped the dots). `span` is the fallback if none of the nodes are found; a missing name is warned in the console.
 
-Two traps when choosing an `anchor`:
+Two things to know when choosing `bracket` nodes:
 
-- The box is taken over the node **and its children**. `Spacecraft_Top` is parented to `Instrument_Unit` (see `nosecone.ts`), so anchoring the IU measures the whole spacecraft and lands at y ≈ 100 — on top of the escape-tower hotspot's tag. Anchor its leaf mesh `Instrument_Unit_Metal_0` instead. `isolate` walks subtrees the same way, so it needs the same treatment.
-- Two hotspots whose anchors resolve within ~15 units of each other will collide their tags at the home framing.
+- The box is taken over each node **and its children**. `Spacecraft_Top` is parented to `Instrument_Unit` (see `nosecone.ts`), so naming the IU would stretch the S-IVB bracket up to the escape tower. Name its leaf mesh `Instrument_Unit_Metal_0` instead. `isolate` walks subtrees the same way, so it needs the same treatment.
+- Each stage's lower end hides inside the shroud below it, so the raw boxes overlap. `Brackets` starts each bracket where the one below it ends (sorted by height, 1.6-unit gap), so they chain into one column and can't overlap — list every node that belongs to the stage and let that clipping deal with the overlap.
 
 ---
 
@@ -130,8 +130,8 @@ src/
     Ground.tsx                 # grounds the rocket: drei ContactShadows (one-frame bake — S-IC base is the fixed explode reference) + a faint radial studio-floor glow that fades to transparent. Mounted inside <Suspense>. Takes `bakeKey`: a parked guest (see Compare.tsx) grows the bake box so its shadow isn't clipped at the edge, and forces a re-bake when it arrives or leaves — a one-frame bake otherwise keeps the departed vehicle's shadow burned into the floor. The box stays **centred on the origin — never shift it**: drei's blur plane sits at the world origin, not under the shadow camera, so an offset box slides every shadow sideways on each of its four blur passes (a guest on the right got its shadow on the far left). `live` keeps it re-rendering while a guest slides. It also turns `gl.autoClear` back on for the shadow pass only — the EffectComposer switches it off, and uncleared ContactShadows renders pile up (trails, spreading pools)
     materials.ts               # metallic look: engines/metal rings reflect the <Environment>, painted body kept satin (not glossy)
     enginedetail.ts            # corrugated tube-wall ribs on the F-1 nozzles (rings hugging each engine's measured bell profile)
-    Callout.tsx                # one billboarded leader line + numbered tag (always faces camera)
-    Callouts.tsx               # resolves each hotspot's `anchor` to a real node position — found once, re-measured every frame so tags follow moving stages (they mount the instant a reassemble starts, stages still exploded); renders Callouts
+    Bracket.tsx                # one stage's ] bracket + numbered tag; drawn one unit tall and stretched into place by Brackets; lines on layer 1 (out of the contact-shadow pass)
+    Brackets.tsx               # measures each hotspot's `bracket` nodes every frame (brackets mount the instant a reassemble starts, stages still exploded, so they must follow), chains them into one column, turns them to the camera about the vertical only (upright, always screen-right). Wide shot only
     Compare.tsx                # parks a second vehicle beside the Saturn V, scaled by real height (measures the stack *as assembled* — Stack stores `userData.assembledBox` — so opening it mid-reassembly can't mis-scale). Optional slide in/out (`enterFrom` / `present` / `onSettled`) and height `labels` in feet
     Dimension.tsx              # engineering-drawing height line + "363 ft" label; its lines sit on layer 1 so the contact-shadow pass never draws them
     livery.ts                  # repaints a guest into its real colours (the N1 ships all-white; olive below the shroud line, white above). Also fixes the LM's colours (its exporter wrote sRGB values where glTF expects linear, so they rendered washed out: black panels grey, flag pink) and gives its gold foil a metallic sheen
@@ -144,7 +144,7 @@ src/
     assembly-map.html          # (in public/) standalone OpenLayers map of where each stage was built + how it reached KSC; embedded as a slide via `map: { src }`
   ui/
     Card.tsx                   # the popup panel (DOM overlay)
-    Progress.tsx               # 01 · 02 · 03 · 04 · 05 indicator
+    Progress.tsx               # 01 · 02 · 03 indicator
     confetti.ts                # dependency-free canvas burst (side cannons) for a slide payoff beat
     flyby.ts                   # sends an image across the top of the frame (the eagle gif) — CSS-animated
   App.tsx                      # owns activeIndex + exploded; keyboard; explode button; credit; lights + procedural <Environment> (Lightformers, no HDR file)
@@ -168,11 +168,11 @@ src/
 
 - `ORBIT_TARGET = [0, 57, 0]` — OrbitControls target + home `lookAt`.
 - `HOME_CAMERA`, `EXPLODE_CAMERA`, and each hotspot `camera` are all in this space, in `hotspots.ts`.
-- **Adding a hotspot:** give it an `anchor` (a node name above), a `camera` pose looking at that region, and an `isolate` stage. Capture the pose live: the temp `PoseLogger` in `App.tsx` logs `position`/`lookAt` to the console on **`p`** — paste those in. (Then remove `PoseLogger` before ship.)
+- **Adding a hotspot:** give it `bracket` nodes (names above) plus a fallback `span`, a `camera` pose looking at that region, and an `isolate` stage. Capture the pose live: the temp `PoseLogger` in `App.tsx` logs `position`/`lookAt` to the console on **`p`** — paste those in. (Then remove `PoseLogger` before ship.)
 
 **Explode.** Toggle with **`X`** or the on-screen button. `explode.ts` moves each stage group up (cumulative), revealing the engine clusters in the gaps; `CameraRig` pulls back to `EXPLODE_CAMERA`. Reassembles on repeat. Mutually exclusive with hotspots.
 
-**Callouts billboard.** Each callout copies the camera orientation every frame, so the leader line + tag always read straight-on regardless of how the rocket is rotated (no twisting to see a label).
+**Brackets stay upright.** Each bracket turns to face the camera about the vertical axis only, so it stays vertical beside its stage and always on the right of the rocket, however it's orbited. They show on the wide shot only — hidden while exploded, comparing, on slides, and while a hotspot is open (the S-IC bracket would run off the top of the engine close-up anyway).
 
 ---
 
@@ -180,7 +180,7 @@ src/
 
 Non-negotiable. These are what separate a demo from a presentation.
 
-1. **Keyboard navigation is the primary interface.** `←` / `→` step through hotspots in `order`. `Esc` closes the card and returns to the wide shot. `1`–`5` jump directly. Clicking a marker is a secondary convenience for answering audience questions. Never ship a change that breaks arrow-key nav.
+1. **Keyboard navigation is the primary interface.** `←` / `→` step through hotspots in `order`. `Esc` closes the card and returns to the wide shot. `1`–`3` jump directly (the keys follow the hotspot count). Clicking a marker is a secondary convenience for answering audience questions. Never ship a change that breaks arrow-key nav.
 2. **Never trap focus or require a precise click.** No small hit targets, no drag-to-open, no hover-only affordances.
 3. **Camera transitions are eased (~1s; explode ~1.2s) and always land in the same place for a given hotspot.** Deterministic — fixed duration, snaps to the exact pose. The presenter has rehearsed this.
 4. **Legible from 20 feet.** Body text no smaller than 18px. Card max-width ~520px. High contrast. Assume a washed-out projector — never rely on subtle value differences.
@@ -279,12 +279,13 @@ _Update this as you go — it's what a fresh session reads first._
 - [x] **Manufacturing & assembly map** — a slide can carry `map: { src }` (`slides.ts`) and the deck renders that page full-bleed in an iframe (`.deck__slide--map`). The page is `public/map/assembly-map.html`: standalone, no build step, OpenLayers 10 + a keyless Esri dark basemap from CDN, all sites/routes inline. Ten sites coloured by category with click-for-detail popups; barge routes traced as **multi-point paths along actual navigable water** (Intracoastal → Mississippi Sound; around the Keys and up the Atlantic; Baja → Panama Canal → Gulf), drawn as fluid curves through their waypoints via **centripetal** Catmull-Rom (`smoothPath`) — centripetal, not uniform, because uniform parameterisation overshoots at tight corners and a corner here is a headland, so an overshoot runs the ship through land; air routes as dashed arcs; legend + five show/hide toggles; clicking a route draws it in with a travelling marker, and "Trace every journey" runs them all. A leg can carry **`continuesTo`**: the stages fired at the Mississippi Test Facility went on to the Cape from there, and both took the same barge run, so that leg is drawn once and shared — `continuesTo` stitches it back onto each stage's journey, and the tracer runs the whole chain as one motion (one marker, finished legs left drawn, a beat at the stop) rather than a line that ends in Mississippi and an unrelated line that starts there. Leg duration is derived from length against the longest route of that mode, so speed is constant across a journey instead of lurching at the junction. "Trace every journey" walks journey _starts_ only, so a shared leg isn't animated twice — and paces each journey `GATHER` (0.72) of the way toward the slowest, so they land within ~2s of each other instead of the flights finishing while the S-II is still off Mexico. The flights still arrive first; a route traced on its own keeps its natural pace. The home framing (`HOME_EXTENT`) is **measured from the features themselves** — every site and every route, Panama detour included — so the whole picture is on screen at open and adding a site or re-routing a barge re-frames the map rather than quietly cropping it. It's measured from _all_ features, not the visible ones, so a legend toggle can't shift the framing under the presenter; `r` resets the view. Copy is **not** in the HTML: the slide's eyebrow/title/subtitle are passed on the query string, so this slide's words live in `slides.ts` with every other slide's, and the file still reads correctly opened on its own. **Keyboard nav across the iframe:** clicking into an iframe moves focus out of the parent document, which would kill `←`/`→`; the page forwards those keys back via `postMessage` and `App` replays them (verified). `heroPreview` in `App.tsx` now holds from the hero slide _onward_ rather than only on it — the map sits after the hero slide, is opaque, and the grow-into-HOME reveal is saved for the real handoff instead of being spent behind it.
       Three gotchas worth keeping: giving the basemap its own `className` splits OL's single composited canvas into one per layer, so an opaque `background` on `canvas` makes the vector layer paint over the tiles (it belongs on `.ol-viewport`); a custom `className` _replaces_ `ol-layer`, which carries the container's sizing; and OL writes `z-index: 0` **inline** on `.ol-overlaycontainer-stopevent`, which starts a stacking context — so a popup can't clear the title/legend from inside it however high its own z-index. The container is raised instead (`!important`, to beat the inline style), and popups are opaque (`--panel-solid`) rather than 92% so the title underneath can't ghost through them. Coordinates were refined from the supplied set but stay approximate — and the Huntington Beach → SACTO leg is flagged `unverified: true` in the data (renders dimmed, says so in its popup): confirm or delete that one line.
 - [x] **Hotspots 2–5 — machine built, copy PLACEHOLDER.** Bottom → top, so the camera climbs the stack: **02** S-II (the mass problem, `anchor: "S-II"`), **03** S-IVB (the restart in space, `anchor: "S-IVB"` — its own engine `J2005` is hidden under the S-II_Top shroud, so the stage body is the anchor), **04** Instrument Unit (the computer, `anchor: "Instrument_Unit_Metal_0"` — see the two anchor traps above), **05** Spacecraft_Top (the escape tower). Poses derived from the measured extents, then verified headless: all five tags separate at home, arrow nav steps 1→5, ← walks back, Esc closes, build clean.
-- [ ] Real copy — **all five** hotspots are PLACEHOLDER body text with DRAFT specs; presenter writes the actual stories and verifies the numbers.
+- [x] **Three stage hotspots, marked by brackets** — cut to one hotspot per stage: **01** S-IC (keeps the F-1 copy + engine close-up), **02** S-II, **03** S-IVB; the Instrument Unit and escape-tower hotspots are gone (placeholder copy, still in git history). The leader lines are replaced by engineering-drawing ] brackets (`Bracket.tsx` / `Brackets.tsx`): each spans its stage's measured height, the three chain into one column right of the rocket, and all of them hide while a hotspot is open (the card + dimming take over). Verified headless: 3 tags right of the axis at home and after an orbit, 0 px drift after explode → reassemble, → stops at 03, Esc brings them back, build clean.
+- [ ] Real copy — **02 and 03** are PLACEHOLDER body text with DRAFT specs; 01 has real body copy but a placeholder subtitle. Presenter writes the actual stories and verifies the numbers.
 - [ ] Remove the temp `PoseLogger` from `App.tsx` before ship.
-- [ ] Optional polish — in the dive-in the `01` tag overlaps the card slightly (hide-when-open or extend-left); optional stage labels on the exploded view.
+- [ ] Optional polish — optional stage labels on the exploded view. (The dive-in tag/card overlap is gone: brackets hide while a hotspot is open.)
 - [ ] Dry run on presentation hardware; fallback screen recording saved to desktop.
 
-**Next up:** swap in real copy for all five hotspots. The machine is done — it's a data edit in `hotspots.ts`.
+**Next up:** swap in real copy for the three hotspots. The machine is done — it's a data edit in `hotspots.ts`.
 
 ## Personal Note
 

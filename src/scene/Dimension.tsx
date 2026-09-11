@@ -15,7 +15,7 @@ const TICK = 2.5 // half-length of the end ticks, scene units
 // that material it draws its template quad at the line's origin instead — here, on the
 // floor. So the lines live on their own layer: the main camera is told to see it, the
 // shadow camera (layer 0 only) never does.
-const DIM_LAYER = 1
+export const DIM_LAYER = 1
 
 export function Dimension({
   x,

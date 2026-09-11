@@ -83,22 +83,19 @@ canvas {
   touch-action: none;
 }
 
-/* --- Callout tag (numbered marker at the end of the leader line) --- */
-.callout-tag {
+/* --- Bracket tag (numbered marker at the end of a stage bracket's stub) --- */
+.bracket-tag {
   font: 600 18px/1 var(--font-sans);
   letter-spacing: 0.02em;
   padding: 5px 10px;
-  color: #fff;
-  background: var(--accent);
-  border: 1px solid transparent;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--line);
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
-}
-.callout-tag--inactive {
-  color: var(--muted);
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid var(--rule);
+  /* drei pins the top-left corner on the stub's end: centre it on the stub, just clear of it */
+  transform: translate(4px, -50%);
 }
 
 /* --- Card (DOM overlay, right side) --- */

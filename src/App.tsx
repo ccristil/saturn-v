@@ -6,7 +6,7 @@ import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { Stack } from './scene/Stack'
 import { Ground } from './scene/Ground'
-import { Callouts } from './scene/Callouts'
+import { Brackets } from './scene/Brackets'
 import { Compare, preloadCompare } from './scene/Compare'
 import { Spacecraft, preloadSpacecraft } from './scene/Spacecraft'
 import { GuestBoundary } from './scene/GuestBoundary'
@@ -356,12 +356,10 @@ export default function App() {
             guestX={compare ? deckGuestX : LIBERTY_COMPARE.x}
             live={libertyMoving}
           />
-          {!exploded && !comparing && !spacecraft && slideIndex === null && (
-            <Callouts
-              activeIndex={activeIndex}
-              flip={activeIndex !== null}
-              onSelect={setActiveIndex}
-            />
+          {/* Wide shot only: once a hotspot is open, its card and the dimming say where
+              you are, and the first stage's bracket would run off the dive-in frame. */}
+          {!exploded && !comparing && !spacecraft && slideIndex === null && activeIndex === null && (
+            <Brackets onSelect={setActiveIndex} />
           )}
         </Suspense>
 
