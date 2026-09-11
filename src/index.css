@@ -282,10 +282,12 @@ canvas {
   margin-top: 4px;
   transform: rotate(-135deg);
 }
+/* stretch: every control takes the widest one's width (Start Presentation), so the
+   column reads as one block */
 .hud__items {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 10px;
   /* Closed = unclickable and out of the tab order, but only once the roll-up has
      finished playing — hence the delayed visibility flip. */

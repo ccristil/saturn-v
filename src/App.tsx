@@ -421,16 +421,16 @@ export default function App() {
               Start Presentation
             </button>
             <button
-              className={exploded ? 'hud-btn explode-btn is-active' : 'hud-btn explode-btn'}
-              onClick={toggleExplode}
-            >
-              {exploded ? 'Reassemble' : 'Explode stages'}
-            </button>
-            <button
               className={comparing ? 'hud-btn compare-btn is-active' : 'hud-btn compare-btn'}
               onClick={toggleCompare}
             >
               Compare
+            </button>
+            <button
+              className={exploded ? 'hud-btn explode-btn is-active' : 'hud-btn explode-btn'}
+              onClick={toggleExplode}
+            >
+              {exploded ? 'Reassemble' : 'Explode stages'}
             </button>
             <button
               className={spacecraft ? 'hud-btn spacecraft-btn is-active' : 'hud-btn spacecraft-btn'}
