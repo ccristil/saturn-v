@@ -299,7 +299,7 @@ export const hotspots: Hotspot[] = [
     },
     body: [
       "LIT TWICE. Everything below this fires once, on a pad, with the whole world watching. This stage has to burn to reach orbit, shut down, coast, and then relight — cold, hours later, on the far side of a checklist.",
-      "TO THE MOON. That second burn is translunar injection. This trajectory was so precise that if none of the rockets after this worked, they would ride the moons gravity back to earth without firing any rockets. The Apollo 13 did a version of this after an oxygen tank exploded in the service module.",
+      "TO THE MOON. That second burn is translunar injection. This trajectory was so precise that if none of the rockets after this worked, they would ride the Moon's gravity back to Earth without firing any rockets. Apollo 13 did a version of this after an oxygen tank exploded in the service module.",
     ],
     specs: [
       { label: "Engines", value: "1 × J-2" },
