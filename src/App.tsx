@@ -14,6 +14,7 @@ import { CameraRig, type CamPose } from './scene/CameraRig'
 import { Card } from './ui/Card'
 import { Progress } from './ui/Progress'
 import { Presentation } from './ui/Presentation'
+import { LaunchVideo } from './ui/LaunchVideo'
 import {
   hotspots,
   HOME_CAMERA,
@@ -24,6 +25,7 @@ import {
   COMPARE_CREDIT,
   LIBERTY_COMPARE,
   SPACECRAFT_VIEW,
+  LAUNCH_VIDEO,
 } from './content/hotspots'
 import { slides, slideSteps } from './content/slides'
 
@@ -77,6 +79,9 @@ export default function App() {
   const [spacecraft, setSpacecraft] = useState(false)
   const [spacecraftUp, setSpacecraftUp] = useState(false)
   const [spacecraftBeat, setSpacecraftBeat] = useState(0)
+  // The HUD's "Launch video": a YouTube video, full screen and with sound, over everything.
+  // It owns the keyboard while it's up, so closing it leaves the scene exactly as it was.
+  const [launchVideo, setLaunchVideo] = useState(false)
 
   // Warm every comparison model at startup: mounting one cold, mid-talk, would suspend
   // and blank the scene for as long as the download takes.
@@ -438,6 +443,9 @@ export default function App() {
             >
               Spacecraft
             </button>
+            <button className="hud-btn launch-btn" onClick={() => setLaunchVideo(true)}>
+              Launch video
+            </button>
           </div>
         </nav>
       )}
@@ -461,6 +469,9 @@ export default function App() {
           onExit={exitPresentation}
         />
       )}
+
+      {/* stays mounted and opens on `open` — see LaunchVideo.tsx */}
+      <LaunchVideo video={LAUNCH_VIDEO} open={launchVideo} onClose={() => setLaunchVideo(false)} />
     </>
   )
 }

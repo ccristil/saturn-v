@@ -158,6 +158,21 @@ export const SPACECRAFT_VIEW: {
   ],
 };
 
+// The HUD's "Launch video": one whole YouTube video, played full screen with its sound
+// (LaunchVideo.tsx), unlike the card clips, which are silent snippets. Esc, or the video
+// reaching its end, brings the scene back.
+export type LaunchVideo = {
+  youtube: string; // the video id, as in Clip
+  label: string; // on the poster while it loads
+  credit: string;
+};
+export const LAUNCH_VIDEO: LaunchVideo = {
+  // "Saturn V Launch. With enhanced audio... turn your speakers up!" (2:34)
+  youtube: "CcXap3qet3g",
+  label: "Saturn V launch",
+  credit: "via Hornet Museum on YouTube",
+};
+
 export const hotspots: Hotspot[] = [
   {
     id: "f1-engines",

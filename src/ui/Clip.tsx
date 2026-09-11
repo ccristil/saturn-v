@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Clip as ClipData } from '../content/hotspots'
+import { loadYouTube, type YTPlayer } from './youtube'
 
 // One snippet of a YouTube video, played inside the card on click (hotspot.clips). Until
 // then it's YouTube's thumbnail and nothing else loads. The footage is silent, so the
@@ -40,60 +41,6 @@ const seconds = (t: string) => t.split(':').reduce((s, n) => s * 60 + Number(n),
 
 // 20 → "0:20"
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-
-// The slice of YouTube's IFrame Player API used here (an @types package isn't worth a dependency).
-type YTPlayer = {
-  getCurrentTime(): number
-  getPlayerState(): number // 1 = playing
-  getIframe(): HTMLIFrameElement
-  destroy(): void
-}
-type YTEvent = { target: YTPlayer; data: number }
-type YTApi = {
-  Player: new (
-    el: HTMLElement,
-    opts: {
-      videoId: string
-      width: string
-      height: string
-      playerVars: Record<string, number>
-      events: {
-        onReady: (e: YTEvent) => void
-        onStateChange: (e: YTEvent) => void
-        onError: (e: YTEvent) => void
-      }
-    },
-  ) => YTPlayer
-}
-
-// YouTube's own player script, loaded once on first need. It comes from where the video
-// itself comes from, so it adds no new way for a clip to fail.
-let api: Promise<YTApi> | null = null
-function loadYouTube(): Promise<YTApi> {
-  api ??= new Promise((resolve, reject) => {
-    const w = window as unknown as {
-      YT?: YTApi & { ready?: (f: () => void) => void }
-      onYouTubeIframeAPIReady?: () => void
-    }
-    // Already on the page: a hot-reloaded copy of this module starts over with `api` null,
-    // and YouTube's loader never calls onYouTubeIframeAPIReady a second time, so the clip
-    // would spin forever. YT.ready runs now if the API is up, or as soon as it is.
-    if (w.YT?.ready) {
-      w.YT.ready(() => resolve(w.YT!))
-      return
-    }
-    w.onYouTubeIframeAPIReady = () => resolve(w.YT!)
-    const script = document.createElement('script')
-    script.src = 'https://www.youtube.com/iframe_api'
-    script.onerror = () => {
-      script.remove()
-      api = null // the next click tries again
-      reject(new Error('could not load the YouTube player API'))
-    }
-    document.head.appendChild(script)
-  })
-  return api
-}
 
 // idle: the poster · loading: poster + spinner, the player starting (and pre-rolling)
 // underneath · live: poster faded out · ending: poster fading back in over the last frames
